@@ -14,7 +14,7 @@
   limitations under the License.
 */
 import fetch from 'node-fetch';
-import * as qs from 'query-string';
+import * as queryString from 'query-string';
 
 import dubug from 'debug';
 
@@ -36,6 +36,8 @@ const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
 exports.PRODUCTION_API_BASE_URL = PRODUCTION_API_BASE_URL;
 exports.SANDBOX_API_BASE_URL = SANDBOX_API_BASE_URL;
 
+import { type RequestInit } from 'node-fetch';
+
 type credentials = {
   access_token: string;
   refresh_token: string;
@@ -52,8 +54,12 @@ type connectorConstuctorOptions = {
   credential_initializer?: () => Promise<credentials>;
 } & Partial<credentials>;
 
-interface QboConnector extends connectorConstuctorOptions {
-  endpoints: {} | null;
+export interface QboConnector extends connectorConstuctorOptions {
+  endpoints: {
+    authorization_endpoint: string;
+    token_endpoint: string;
+    revocation_endpoint: string;
+  } | null;
   registry: {
     handle: string;
     name: string;
@@ -70,12 +76,34 @@ interface QboConnector extends connectorConstuctorOptions {
   };
 }
 
+interface FetchOptions extends RequestInit {
+  headers: {
+    Accept: string;
+    'Content-Type': string;
+    'User-Agent': string;
+    Authorization?: string;
+  };
+}
+
+// DoFetch Types
+declare namespace doFetch {
+  type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
+  type URL = string;
+  type Query = { [key: string]: string };
+  type Payload = any;
+  type Options = {
+    headers?: FetchOptions['headers'];
+    entityName?: string;
+    retries?: number;
+  };
+}
+
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
  *
  * @version 4.2.x
  */
-class QboConnector extends EventEmitter {
+export class QboConnector extends EventEmitter {
   /**
    * @param {object} config
    * @param {string} config.client_id (required) the Intuit-generated client id for your app
@@ -269,6 +297,11 @@ class QboConnector extends EventEmitter {
    * Get the object through which you can interact with the QuickBooks Online Accounting API.
    */
   accountingApi() {
+    // type AccountingAPIOptions = {
+    //     name: string,
+    //     fragment: string,
+    //     create? : ()
+
     var self = this;
     self.registry.forEach(function (e) {
       var options = { name: e.name, fragment: e.fragment };
@@ -412,14 +445,20 @@ class QboConnector extends EventEmitter {
    * @param {object} options.headers hash of headers. Specifying the headers option completely
    * replaces the default headers.
    */
-  async doFetch(method, url, query, payload, options) {
+  async doFetch(
+    method: doFetch.Method,
+    url: doFetch.URL,
+    query: doFetch.Query,
+    payload: doFetch.Payload,
+    options: doFetch.Options = {}
+  ) {
     if (!this.refresh_token || !this.access_token || !this.realm_id) {
       if (!this.refresh_token) verbose(`Missing refresh_token.`);
       if (!this.access_token) verbose(`Missing access_token.`);
       if (!this.realm_id) verbose(`Missing realm_id.`);
       if (this.credential_initializer) {
         verbose(`Obtaining credentials from initializer...`);
-        let creds = await this.credential_initializer.call();
+        let creds = await this.credential_initializer();
         if (creds) {
           this.setCredentials(creds);
         }
@@ -432,14 +471,11 @@ class QboConnector extends EventEmitter {
         );
       }
     }
-    if (!options) {
-      options = {};
-    }
     if (!options.retries) {
       options.retries = 0;
     }
 
-    let fetchOpts = {
+    let fetchOpts: FetchOptions = {
       method,
       headers: {
         Accept: 'application/json',
@@ -458,7 +494,7 @@ class QboConnector extends EventEmitter {
 
     let qstring = '';
     if (query) {
-      qstring = qs.stringify(query);
+      qstring = queryString.stringify(query);
       qstring = '?' + qstring;
     }
     let full_url = `${this.base_url}/v3/company/${this.realm_id}${url}${qstring}`;
@@ -497,9 +533,9 @@ class QboConnector extends EventEmitter {
 
         //Note: Some APIs return HTML or text depending on status code...
 
-        if ((response.status >= 300) & (response.status < 400)) {
+        if (response.status >= 300 && response.status < 400) {
           //redirection
-        } else if ((response.status >= 400) & (response.status < 500)) {
+        } else if (response.status >= 400 && response.status < 500) {
           if (response.status === 401) {
             //These will be retried once after attempting to refresh the access token.
             let textResult = await response.text();
@@ -615,10 +651,10 @@ class QboConnector extends EventEmitter {
    *    x_refresh_token_expires_in: number //(number of seconds refresh token lives)
    *  }
    */
-  async getAccessToken(code, realm_id) {
+  async getAccessToken(code?, realm_id?) {
     await this.loadDiscoveryInfo();
 
-    let fetchOpts = {
+    let fetchOpts: FetchOptions = {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -661,7 +697,7 @@ class QboConnector extends EventEmitter {
     let result = await response.json();
     verbose(`Received:\n${JSON.stringify(result)}`);
 
-    let credentials = {};
+    let credentials: Partial<credentials> = {};
     Object.assign(credentials, result);
 
     if (realm_id) {
@@ -698,7 +734,7 @@ class QboConnector extends EventEmitter {
       debug(`Disconnecting from the Intuit API.`);
       if (this.credential_initializer) {
         //Get latest credentials before disconnecting.
-        let creds = await this.credential_initializer.call();
+        let creds = await this.credential_initializer();
         verbose(
           `Obtained credentials from initializer:${JSON.stringify(creds)}.`
         );
@@ -776,10 +812,13 @@ class QboConnector extends EventEmitter {
   }
 } //QboConnector
 
-exports.QboConnector = QboConnector;
+export interface ApiError extends Error {
+  payload: any;
+  intuit_tid: string;
+}
 
 /** An API error from the connector, typically including a captured `payload` object you can work with to obtain more information about the error and how to handle it. */
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(msg, payload, intuit_tid) {
     super(msg);
     this.payload = payload; //Stores the Intuit response.
@@ -788,13 +827,13 @@ class ApiError extends Error {
 }
 
 /** Specific type of API error indicating the API request limit has been reached. */
-class ApiThrottlingError extends ApiError {
+export class ApiThrottlingError extends ApiError {
   constructor(msg, payload, intuit_tid) {
     super(msg, payload, intuit_tid);
   }
 }
 class ApiAuthError extends Error {} //only used internally.
-class CredentialsError extends Error {} //For missing/incomplete/invalid OAuth credentials.
-exports.ApiError = ApiError;
-exports.ApiThrottlingError = ApiThrottlingError;
-exports.CredentialsError = CredentialsError;
+export class CredentialsError extends Error {} //For missing/incomplete/invalid OAuth credentials.
+// exports.ApiError = ApiError;
+// exports.ApiThrottlingError = ApiThrottlingError;
+// exports.CredentialsError = CredentialsError;
