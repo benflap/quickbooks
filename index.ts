@@ -73,6 +73,7 @@ export interface QboConnector extends connectorConstuctorOptions {
   }[];
   accounting: {
     intuit_tid: string | null;
+    batch?: AccountingAPI.Batch;
   };
 }
 
@@ -96,6 +97,41 @@ declare namespace doFetch {
     entityName?: string;
     retries?: number;
   };
+}
+
+declare namespace AccountingAPI {
+  type Options = {
+    name: string;
+    fragment: string;
+    create?: Create;
+    update?: Update;
+    get?: Read;
+    delete?: Delete;
+    query?: AccountingQuery | ReportQuery;
+  };
+  type FunctionOptions = {
+    minor_version?: number;
+    reqid?: string;
+  };
+  type QueryString = {
+    minorversion?: number;
+    requestid?: string;
+    operation?: 'update' | 'delete';
+    query?: string;
+  };
+  type Create = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Update = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Read = (id: number, options: FunctionOptions) => Promise<any>;
+  type Delete = (payload: any, options: FunctionOptions) => Promise<any>;
+  type AccountingQuery = (
+    queryStatement: string | null,
+    options: FunctionOptions
+  ) => Promise<any>;
+  type ReportQuery = (
+    params: { [key: string]: string },
+    options: FunctionOptions
+  ) => Promise<any>;
+  type Batch = (payload: any) => Promise<any>;
 }
 
 /**
@@ -304,10 +340,13 @@ export class QboConnector extends EventEmitter {
 
     var self = this;
     self.registry.forEach(function (e) {
-      var options = { name: e.name, fragment: e.fragment };
+      var options: AccountingAPI.Options = {
+        name: e.name,
+        fragment: e.fragment,
+      };
       if (e.create) {
         options.create = function (payload, opts) {
-          var qs = {};
+          var qs: AccountingAPI.QueryString = {};
           if (opts && opts.reqid) {
             qs.requestid = opts.reqid;
           }
@@ -322,7 +361,7 @@ export class QboConnector extends EventEmitter {
 
       if (e.update) {
         options.update = function (payload, opts) {
-          var qs = { operation: 'update' };
+          var qs: AccountingAPI.QueryString = { operation: 'update' };
           if (opts && opts.reqid) {
             qs.requestid = opts.reqid;
           }
@@ -337,7 +376,7 @@ export class QboConnector extends EventEmitter {
 
       if (e.read) {
         options.get = function (id, opts) {
-          var qs = null;
+          var qs: AccountingAPI.QueryString = null;
           if (opts && opts.reqid) {
             if (!qs) qs = {};
             qs.requestid = opts.reqid;
@@ -355,7 +394,7 @@ export class QboConnector extends EventEmitter {
 
       if (e['delete']) {
         options.delete = function (payload, opts) {
-          var qs = { operation: 'delete' };
+          var qs: AccountingAPI.QueryString = { operation: 'delete' };
           if (opts && opts.reqid) {
             qs.requestid = opts.reqid;
           }
@@ -373,7 +412,7 @@ export class QboConnector extends EventEmitter {
           if (!queryStatement) {
             queryStatement = `select * from ${e.name}`;
           }
-          var qs = {
+          var qs: AccountingAPI.QueryString = {
             query: queryStatement,
           };
           if (opts && opts.reqid) {
