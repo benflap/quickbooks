@@ -54,6 +54,8 @@ type connectorConstuctorOptions = {
   credential_initializer?: () => Promise<credentials>;
 } & Partial<credentials>;
 
+import { registry } from './registry';
+
 export interface QboConnector extends connectorConstuctorOptions {
   endpoints: {
     authorization_endpoint: string;
@@ -61,9 +63,9 @@ export interface QboConnector extends connectorConstuctorOptions {
     revocation_endpoint: string;
   } | null;
   registry: {
-    handle: string;
-    name: string;
-    fragment: string;
+    handle: (typeof registry)[number]['handle'];
+    name: (typeof registry)[number]['name'];
+    fragment: (typeof registry)[number]['fragment'];
     query?: boolean;
     create?: boolean;
     read?: boolean;
@@ -74,7 +76,7 @@ export interface QboConnector extends connectorConstuctorOptions {
   accounting: {
     intuit_tid: string | null;
     batch?: AccountingAPI.Batch;
-  };
+  } & AccountingAPI.ApiEntities;
 }
 
 interface FetchOptions extends RequestInit {
@@ -100,14 +102,16 @@ declare namespace doFetch {
 }
 
 declare namespace AccountingAPI {
-  type Options = {
+  type OptionsBase = {
     name: string;
     fragment: string;
-    create?: Create;
-    update?: Update;
-    get?: Read;
-    delete?: Delete;
-    query?: AccountingQuery | ReportQuery;
+  };
+  type Options = OptionsBase & {
+    [key in (typeof registry)[number]['handle']]?: {
+      create: AccountingAPI.Createable<(typeof registry)[number]>;
+      get: AccountingAPI.Readable<(typeof registry)[number]>;
+      update: AccountingAPI.Updateable<(typeof registry)[number]>;
+    };
   };
   type FunctionOptions = {
     minor_version?: number;
@@ -119,10 +123,25 @@ declare namespace AccountingAPI {
     operation?: 'update' | 'delete';
     query?: string;
   };
+
+  type ApiEntities = {
+    [key in (typeof registry)[number]['handle']]?: {
+      name: (typeof registry)[number]['name'];
+      fragment: (typeof registry)[number]['fragment'];
+      create: Createable<(typeof registry)[number]>;
+      get: Readable<(typeof registry)[number]>;
+      update: Updateable<(typeof registry)[number]>;
+    };
+  };
+
   type Create = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Createable<TEntity> = TEntity extends { create: true } ? Create : never;
   type Update = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Updateable<TEntity> = TEntity extends { update: true } ? Update : never;
   type Read = (id: number, options: FunctionOptions) => Promise<any>;
+  type Readable<TEntity> = TEntity extends { read: true } ? Read : never;
   type Delete = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Deleteable<TEntity> = TEntity extends { delete: true } ? Delete : never;
   type AccountingQuery = (
     queryStatement: string | null,
     options: FunctionOptions
@@ -273,7 +292,7 @@ export class QboConnector extends EventEmitter {
    * @param {string} creds.realm_id the Intuit realm (company id)
    * @param {string} creds.refresh_token the Intuit refresh token
    */
-  setCredentials(creds) {
+  setCredentials(creds: Partial<credentials>) {
     if (!creds) throw new CredentialsError('No credentials provided.');
     if (creds.access_token) {
       if (this.access_token && this.access_token !== creds.access_token) {
@@ -339,11 +358,12 @@ export class QboConnector extends EventEmitter {
     //     create? : ()
 
     var self = this;
-    self.registry.forEach(function (e) {
-      var options: AccountingAPI.Options = {
+    registry.forEach(function (e) {
+      var options: AccountingAPI.ApiEntities[typeof e.handle] = {
         name: e.name,
         fragment: e.fragment,
       };
+
       if (e.create) {
         options.create = function (payload, opts) {
           var qs: AccountingAPI.QueryString = {};
@@ -429,24 +449,24 @@ export class QboConnector extends EventEmitter {
         };
       }
 
-      if (e.report) {
-        options.query = function (parms, opts) {
-          var qs = parms || {};
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            if (!qs) qs = {};
-            qs.minorversion = self.minor_version;
-          }
+      //   if (e.report) {
+      //     options.query = function (parms, opts) {
+      //       var qs = parms || {};
+      //       if (opts && opts.reqid) {
+      //         qs.requestid = opts.reqid;
+      //       }
+      //       if (opts && opts.minor_version) {
+      //         qs.minorversion = opts.minor_version;
+      //       } else if (self.minor_version) {
+      //         if (!qs) qs = {};
+      //         qs.minorversion = self.minor_version;
+      //       }
 
-          return self._get.call(self, e.name, `/reports/${e.fragment}`, qs);
-        };
-      }
+      //       return self._get.call(self, e.name, `/reports/${e.fragment}`, qs);
+      //     };
+      //   }
 
-      self.accounting[e.handle] = options;
+      self.accounting[handle] = options;
     });
     self.accounting.batch = function (payload) {
       return self._batch.call(self, payload);
