@@ -73,3 +73,5 @@ test/*.js
 
 pkg-*.yaml
 
+dist
+

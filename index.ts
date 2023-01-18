@@ -73,10 +73,12 @@ export interface QboConnector extends connectorConstuctorOptions {
     delete?: boolean;
     report?: boolean;
   }[];
-  accounting: {
-    intuit_tid: string | null;
-    batch?: AccountingAPI.Batch;
-  } & AccountingAPI.ApiEntities;
+  accounting:
+    | {
+        intuit_tid: string | null;
+        batch?: (payload: any) => Promise<any>;
+      }
+    | AccountingAPI.ApiEntities;
 }
 
 interface FetchOptions extends RequestInit {
@@ -102,17 +104,6 @@ declare namespace doFetch {
 }
 
 declare namespace AccountingAPI {
-  type OptionsBase = {
-    name: string;
-    fragment: string;
-  };
-  type Options = OptionsBase & {
-    [key in (typeof registry)[number]['handle']]?: {
-      create: AccountingAPI.Createable<(typeof registry)[number]>;
-      get: AccountingAPI.Readable<(typeof registry)[number]>;
-      update: AccountingAPI.Updateable<(typeof registry)[number]>;
-    };
-  };
   type FunctionOptions = {
     minor_version?: number;
     reqid?: string;
@@ -125,30 +116,49 @@ declare namespace AccountingAPI {
   };
 
   type ApiEntities = {
-    [key in (typeof registry)[number]['handle']]?: {
-      name: (typeof registry)[number]['name'];
-      fragment: (typeof registry)[number]['fragment'];
+    [key in (typeof registry)[number]['handle']]: {
+      name: (typeof registry)[number]['name'][number];
+      fragment: (typeof registry)[number]['fragment'][number];
       create: Createable<(typeof registry)[number]>;
       get: Readable<(typeof registry)[number]>;
       update: Updateable<(typeof registry)[number]>;
+      delete: Deleteable<(typeof registry)[number]>;
+      query: Queryable<(typeof registry)[number]>;
     };
+  } & {
+    intuit_tid: string;
+    batch: Batch;
   };
+  type ApiEntitiesCreated<TAccounting> = TAccounting extends ApiEntities
+    ? ApiEntities
+    : { intuit_tid: string };
 
-  type Create = (payload: any, options: FunctionOptions) => Promise<any>;
+  type Create = (payload: any, options?: FunctionOptions) => Promise<any>;
   type Createable<TEntity> = TEntity extends { create: true } ? Create : never;
-  type Update = (payload: any, options: FunctionOptions) => Promise<any>;
+
+  type Update = (payload: any, options?: FunctionOptions) => Promise<any>;
   type Updateable<TEntity> = TEntity extends { update: true } ? Update : never;
-  type Read = (id: number, options: FunctionOptions) => Promise<any>;
+
+  type Read = (id: number, options?: FunctionOptions) => Promise<any>;
   type Readable<TEntity> = TEntity extends { read: true } ? Read : never;
-  type Delete = (payload: any, options: FunctionOptions) => Promise<any>;
+
+  type Delete = (payload: any, options?: FunctionOptions) => Promise<any>;
   type Deleteable<TEntity> = TEntity extends { delete: true } ? Delete : never;
+
   type AccountingQuery = (
-    queryStatement: string | null,
-    options: FunctionOptions
+    queryStatement?: string | null,
+    options?: FunctionOptions
   ) => Promise<any>;
+
+  type Queryable<TEntity> = TEntity extends { query: true }
+    ? QueryableReport<TEntity>
+    : AccountingQuery;
+  type QueryableReport<TEntity> = TEntity extends { report: true }
+    ? ReportQuery
+    : never;
   type ReportQuery = (
     params: { [key: string]: string },
-    options: FunctionOptions
+    options?: FunctionOptions
   ) => Promise<any>;
   type Batch = (payload: any) => Promise<any>;
 }
@@ -352,14 +362,19 @@ export class QboConnector extends EventEmitter {
    * Get the object through which you can interact with the QuickBooks Online Accounting API.
    */
   accountingApi() {
-    // type AccountingAPIOptions = {
-    //     name: string,
-    //     fragment: string,
-    //     create? : ()
-
     var self = this;
-    registry.forEach(function (e) {
-      var options: AccountingAPI.ApiEntities[typeof e.handle] = {
+    this.registry.forEach(function (e) {
+      type Options = {
+        name: (typeof registry)[number]['name'];
+        fragment: (typeof registry)[number]['fragment'];
+        create?: AccountingAPI.Create;
+        update?: AccountingAPI.Update;
+        delete?: AccountingAPI.Delete;
+        query?: AccountingAPI.AccountingQuery | AccountingAPI.ReportQuery;
+        get?: AccountingAPI.Read;
+      };
+
+      var options: any = {
         name: e.name,
         fragment: e.fragment,
       };
@@ -449,30 +464,30 @@ export class QboConnector extends EventEmitter {
         };
       }
 
-      //   if (e.report) {
-      //     options.query = function (parms, opts) {
-      //       var qs = parms || {};
-      //       if (opts && opts.reqid) {
-      //         qs.requestid = opts.reqid;
-      //       }
-      //       if (opts && opts.minor_version) {
-      //         qs.minorversion = opts.minor_version;
-      //       } else if (self.minor_version) {
-      //         if (!qs) qs = {};
-      //         qs.minorversion = self.minor_version;
-      //       }
+      if (e.report) {
+        options.query = function (parms, opts) {
+          var qs = parms || {};
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            if (!qs) qs = {};
+            qs.minorversion = self.minor_version;
+          }
 
-      //       return self._get.call(self, e.name, `/reports/${e.fragment}`, qs);
-      //     };
-      //   }
+          return self._get.call(self, e.name, `/reports/${e.fragment}`, qs);
+        };
+      }
 
-      self.accounting[handle] = options;
+      self.accounting[e.handle] = options;
     });
     self.accounting.batch = function (payload) {
       return self._batch.call(self, payload);
     }; //and the batch method as well...
 
-    return self.accounting;
+    return self.accounting as AccountingAPI.ApiEntities;
   }
 
   /**

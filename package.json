@@ -2,7 +2,7 @@
   "name": "@apigrate/quickbooks",
   "version": "4.2.0",
   "description": "NodeJS API Connector for the Intuit QuickBooks API.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test-package-aws": "sam package cloudformation deploy --profile myprofile  --template-file ./templates/intuit-auth-api.yaml --output-template-file pkg-intuitauth.yaml --s3-bucket mybucketname",
