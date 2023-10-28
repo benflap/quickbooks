@@ -63,12 +63,10 @@ export interface QboConnector extends connectorConstuctorOptions {
     revocation_endpoint: string;
   } | null;
   registry: Registry;
-  accounting:
-    | {
-        intuit_tid: string | null;
-        batch?: (payload: any) => Promise<any>;
-      }
-    | AccountingAPI.ApiEntities;
+  accounting: {
+    intuit_tid: string | null;
+    batch?: (payload: any) => Promise<any>;
+  } & [APIOptions["name"]]:  Partial<APIOptions>;
 }
 
 interface FetchOptions extends RequestInit {
@@ -102,9 +100,6 @@ declare namespace AccountingAPI {
       delete: Deleteable<(typeof registry)[number]>;
       query: Queryable<(typeof registry)[number]>;
     };
-  } & {
-    intuit_tid: string;
-    batch: Batch;
   };
   type ApiEntitiesCreated<TAccounting> = TAccounting extends ApiEntities
     ? ApiEntities
@@ -787,7 +782,7 @@ export class QboConnector extends EventEmitter {
     this.setCredentials(credentials);
 
     //After the internal credentials are refreshed, emit the event.
-    this.emit('token.refreshed', credentials);
+    this.emit('token.refreshed', credentials as credentials);
 
     return credentials;
   }
