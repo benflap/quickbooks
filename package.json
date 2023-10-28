@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test-package-aws": "sam package cloudformation deploy --profile myprofile  --template-file ./templates/intuit-auth-api.yaml --output-template-file pkg-intuitauth.yaml --s3-bucket mybucketname",
-    "test-deploy-aws": "aws cloudformation deploy --profile myprofile  --template-file pkg-intuitauth.yaml --stack-name intuitauth"
+    "test-deploy-aws": "aws cloudformation deploy --profile myprofile  --template-file pkg-intuitauth.yaml --stack-name intuitauth",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",

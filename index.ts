@@ -62,17 +62,7 @@ export interface QboConnector extends connectorConstuctorOptions {
     token_endpoint: string;
     revocation_endpoint: string;
   } | null;
-  registry: {
-    handle: (typeof registry)[number]['handle'];
-    name: (typeof registry)[number]['name'];
-    fragment: (typeof registry)[number]['fragment'];
-    query?: boolean;
-    create?: boolean;
-    read?: boolean;
-    update?: boolean;
-    delete?: boolean;
-    report?: boolean;
-  }[];
+  registry: Registry;
   accounting:
     | {
         intuit_tid: string | null;
@@ -87,19 +77,6 @@ interface FetchOptions extends RequestInit {
     'Content-Type': string;
     'User-Agent': string;
     Authorization?: string;
-  };
-}
-
-// DoFetch Types
-declare namespace doFetch {
-  type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
-  type URL = string;
-  type Query = { [key: string]: string };
-  type Payload = any;
-  type Options = {
-    headers?: FetchOptions['headers'];
-    entityName?: string;
-    retries?: number;
   };
 }
 
@@ -163,6 +140,30 @@ declare namespace AccountingAPI {
   type Batch = (payload: any) => Promise<any>;
 }
 
+type APIOptions = {
+  name: ApiEntity['name'];
+  fragment: ApiEntity['fragment'];
+  create?: AccountingAPI.Create;
+  update?: AccountingAPI.Update;
+  delete?: AccountingAPI.Delete;
+  query?: AccountingAPI.AccountingQuery | AccountingAPI.ReportQuery;
+  get?: AccountingAPI.Read;
+};
+
+type ApiEntity = {
+  handle: (typeof registry)[number]['handle'];
+  name: (typeof registry)[number]['name'];
+  fragment: (typeof registry)[number]['fragment'];
+  query?: boolean;
+  create?: boolean;
+  read?: boolean;
+  update?: boolean;
+  delete?: boolean;
+  report?: boolean;
+};
+
+type Registry = ApiEntity[];
+
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
  *
@@ -187,7 +188,7 @@ export class QboConnector extends EventEmitter {
    * `{ access_token, refresh_token, realm_id}`. This function is invoked on the first API method invocation automatically. If you omit this function, you'll need
    * to call the setCredentials method prior to your first API method invocation.
    */
-  constructor(config) {
+  constructor(config: connectorConstuctorOptions) {
     super();
 
     if (!config.client_id || !config.client_secret || !config.redirect_uri) {
@@ -364,17 +365,7 @@ export class QboConnector extends EventEmitter {
   accountingApi() {
     var self = this;
     this.registry.forEach(function (e) {
-      type Options = {
-        name: (typeof registry)[number]['name'];
-        fragment: (typeof registry)[number]['fragment'];
-        create?: AccountingAPI.Create;
-        update?: AccountingAPI.Update;
-        delete?: AccountingAPI.Delete;
-        query?: AccountingAPI.AccountingQuery | AccountingAPI.ReportQuery;
-        get?: AccountingAPI.Read;
-      };
-
-      var options: any = {
+      var options: APIOptions = {
         name: e.name,
         fragment: e.fragment,
       };
@@ -487,7 +478,7 @@ export class QboConnector extends EventEmitter {
       return self._batch.call(self, payload);
     }; //and the batch method as well...
 
-    return self.accounting as AccountingAPI.ApiEntities;
+    return self.accounting;
   }
 
   /**
@@ -520,11 +511,15 @@ export class QboConnector extends EventEmitter {
    * replaces the default headers.
    */
   async doFetch(
-    method: doFetch.Method,
-    url: doFetch.URL,
-    query: doFetch.Query,
-    payload: doFetch.Payload,
-    options: doFetch.Options = {}
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    url: string,
+    query: { [key: string]: string },
+    payload: any,
+    options: {
+      headers?: FetchOptions['headers'];
+      entityName?: string;
+      retries?: number;
+    } = {}
   ) {
     if (!this.refresh_token || !this.access_token || !this.realm_id) {
       if (!this.refresh_token) verbose(`Missing refresh_token.`);
