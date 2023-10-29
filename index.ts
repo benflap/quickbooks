@@ -38,21 +38,21 @@ exports.SANDBOX_API_BASE_URL = SANDBOX_API_BASE_URL;
 
 import { type RequestInit } from 'node-fetch';
 
-type credentials = {
+export type Credentials = {
   access_token: string;
   refresh_token: string;
   realm_id: string;
 };
 
-type connectorConstuctorOptions = {
+type ConnectorConstuctorOptions = {
   client_id: string;
   client_secret: string;
   redirect_uri: string;
   is_sandbox?: boolean;
   base_url?: string;
   minor_version?: number;
-  credential_initializer?: () => Promise<credentials>;
-} & Partial<credentials>;
+  credential_initializer?: () => Promise<Credentials> | Credentials;
+} & Partial<Credentials>;
 
 import { registry } from './registry';
 
@@ -92,10 +92,10 @@ type AccountingQuery = (
   queryStatement?: string | null,
   options?: FunctionOptions
 ) => Promise<any>;
-
 type Queryable<TEntity> = TEntity extends { query: true }
-  ? QueryableReport<TEntity>
-  : AccountingQuery;
+  ? AccountingQuery
+  : never;
+
 type QueryableReport<TEntity> = TEntity extends { report: true }
   ? ReportQuery
   : never;
@@ -103,6 +103,7 @@ type ReportQuery = (
   params: { [key: string]: string },
   options?: FunctionOptions
 ) => Promise<any>;
+
 type Batch = (payload: any) => Promise<any>;
 
 type ApiEntities = {
@@ -119,18 +120,6 @@ type ApiEntities = {
 
 type QboAccounting = ApiEntities & {
   batch: Batch;
-};
-
-type ApiEntity = {
-  handle: (typeof registry)[number]['handle'];
-  name: (typeof registry)[number]['name'];
-  fragment: (typeof registry)[number]['fragment'];
-  query?: boolean;
-  create?: boolean;
-  read?: boolean;
-  update?: boolean;
-  delete?: boolean;
-  report?: boolean;
 };
 
 type RegistryEntry = (typeof registry)[number];
@@ -152,7 +141,7 @@ interface CRUDOperations {
 
 type Entry = BaseEntry & CRUDOperations;
 
-export interface QboConnector extends connectorConstuctorOptions {
+export interface QboConnector extends ConnectorConstuctorOptions {
   endpoints: {
     authorization_endpoint: string;
     token_endpoint: string;
@@ -189,7 +178,7 @@ export class QboConnector extends EventEmitter {
    * `{ access_token, refresh_token, realm_id}`. This function is invoked on the first API method invocation automatically. If you omit this function, you'll need
    * to call the setCredentials method prior to your first API method invocation.
    */
-  constructor(config: connectorConstuctorOptions) {
+  constructor(config: ConnectorConstuctorOptions) {
     super();
 
     if (!config.client_id || !config.client_secret || !config.redirect_uri) {
@@ -306,7 +295,7 @@ export class QboConnector extends EventEmitter {
    * @param {string} creds.realm_id the Intuit realm (company id)
    * @param {string} creds.refresh_token the Intuit refresh token
    */
-  setCredentials(creds: Partial<credentials>) {
+  setCredentials(creds: Partial<Credentials>) {
     if (!creds) throw new CredentialsError('No credentials provided.');
     if (creds.access_token) {
       if (this.access_token && this.access_token !== creds.access_token) {
@@ -365,153 +354,187 @@ export class QboConnector extends EventEmitter {
   /**
    * Get the object through which you can interact with the QuickBooks Online Accounting API.
    */
-  accountingApi(): QboAccounting {
+  accountingApi() {
+    const self = this;
     const api: Partial<ApiEntities> = {};
 
     this.registry.forEach(function (entry: Entry) {
-      const self = this;
-
       api[entry.handle] = {
         name: entry.name,
         fragment: entry.fragment,
-        ...(entry.create
-          ? {
-              create: function (payload, opts) {
-                var qs: QueryString = {};
-                if (opts && opts.reqid) {
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  qs.minorversion = self.minor_version;
-                }
-                return self._post.call(
-                  self,
-                  entry.name,
-                  `/${entry.fragment}`,
-                  qs,
-                  payload
-                );
-              },
-            }
-          : {}),
-        ...(entry.update
-          ? {
-              update: function (payload, opts) {
-                var qs: QueryString = { operation: 'update' };
-                if (opts && opts.reqid) {
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  qs.minorversion = self.minor_version;
-                }
-                return self._post.call(
-                  self,
-                  entry.name,
-                  `/${entry.fragment}`,
-                  qs,
-                  payload
-                );
-              },
-            }
-          : {}),
-        ...(entry.read
-          ? {
-              get: function (id, opts) {
-                var qs: QueryString = null;
-                if (opts && opts.reqid) {
-                  if (!qs) qs = {};
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  if (!qs) qs = {};
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  if (!qs) qs = {};
-                  qs.minorversion = self.minor_version;
-                }
-                return self._get.call(
-                  self,
-                  entry.name,
-                  `/${entry.fragment}/${id}`,
-                  qs
-                );
-              },
-            }
-          : {}),
-        ...(entry['delete']
-          ? {
-              delete: function (payload, opts) {
-                var qs: QueryString = { operation: 'delete' };
-                if (opts && opts.reqid) {
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  qs.minorversion = self.minor_version;
-                }
-                return self._post.call(
-                  self,
-                  entry.name,
-                  `/${entry.fragment}`,
-                  qs,
-                  payload
-                );
-              },
-            }
-          : {}),
-        ...(entry.query
-          ? {
-              query: function (queryStatement, opts) {
-                if (!queryStatement) {
-                  queryStatement = `select * from ${entry.name}`;
-                }
-                var qs: QueryString = {
-                  query: queryStatement,
-                };
-                if (opts && opts.reqid) {
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  if (!qs) qs = {};
-                  qs.minorversion = self.minor_version;
-                }
-
-                return self._get.call(self, entry.name, `/query`, qs);
-              },
-            }
-          : {}),
-        ...(entry.report
-          ? {
-              query: function (parms, opts) {
-                var qs = parms || {};
-                if (opts && opts.reqid) {
-                  qs.requestid = opts.reqid;
-                }
-                if (opts && opts.minor_version) {
-                  qs.minorversion = opts.minor_version;
-                } else if (self.minor_version) {
-                  if (!qs) qs = {};
-                  qs.minorversion = self.minor_version;
-                }
-
-                return self._get.call(
-                  self,
-                  entry.name,
-                  `/reports/${entry.fragment}`,
-                  qs
-                );
-              },
-            }
-          : {}),
+        ...(isCreatable(entry) ? makeCreate(entry) : {}),
+        ...(isUpdateable(entry) ? makeUpdate(entry) : {}),
+        ...(isReadable(entry) ? makeRead(entry) : {}),
+        ...(isDeletable(entry) ? makeDelete(entry) : {}),
+        ...(isQueryable(entry) ? makeAccountingQuery(entry) : {}),
+        ...(isReportable(entry) ? makeReportQuery(entry) : {}),
       };
     });
+
+    function isCreatable(entry: Entry): entry is Entry & { create: true } {
+      return entry.create === true;
+    }
+    function isUpdateable(entry: Entry): entry is Entry & { update: true } {
+      return entry.update === true;
+    }
+    function isReadable(entry: Entry): entry is Entry & { read: true } {
+      return entry.read === true;
+    }
+    function isDeletable(entry: Entry): entry is Entry & { delete: true } {
+      return entry['delete'] === true;
+    }
+    function isQueryable(entry: Entry): entry is Entry & { query: true } {
+      return entry.query === true;
+    }
+    function isReportable(entry: Entry): entry is Entry & { report: true } {
+      return entry.report === true;
+    }
+
+    function makeCreate(entry: Entry & { create: true }): { create: Create } {
+      return {
+        create: function (payload, opts) {
+          var qs: QueryString = {};
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            qs.minorversion = self.minor_version;
+          }
+          return self._post.call(
+            self,
+            entry.name,
+            `/${entry.fragment}`,
+            qs,
+            payload
+          );
+        },
+      };
+    }
+    function makeUpdate(entry: Entry & { update: true }): { update: Update } {
+      return {
+        update: function (payload, opts) {
+          var qs: QueryString = { operation: 'update' };
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            qs.minorversion = self.minor_version;
+          }
+          return self._post.call(
+            self,
+            entry.name,
+            `/${entry.fragment}`,
+            qs,
+            payload
+          );
+        },
+      };
+    }
+
+    function makeRead(entry: Entry & { read: true }): { get: Read } {
+      return {
+        get: function (id, opts) {
+          var qs: QueryString = null;
+          if (opts && opts.reqid) {
+            if (!qs) qs = {};
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            if (!qs) qs = {};
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            if (!qs) qs = {};
+            qs.minorversion = self.minor_version;
+          }
+          return self._get.call(
+            self,
+            entry.name,
+            `/${entry.fragment}/${id}`,
+            qs
+          );
+        },
+      };
+    }
+
+    function makeDelete(entry: Entry & { delete: true }): { delete: Delete } {
+      return {
+        delete: function (payload, opts) {
+          var qs: QueryString = { operation: 'delete' };
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            qs.minorversion = self.minor_version;
+          }
+          return self._post.call(
+            self,
+            entry.name,
+            `/${entry.fragment}`,
+            qs,
+            payload
+          );
+        },
+      };
+    }
+
+    function makeAccountingQuery(entry: Entry & { query: true }): {
+      query: AccountingQuery;
+    } {
+      return {
+        query: function (queryStatement, opts) {
+          if (!queryStatement) {
+            queryStatement = `select * from ${entry.name}`;
+          }
+          var qs: QueryString = {
+            query: queryStatement,
+          };
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version;
+          } else if (self.minor_version) {
+            if (!qs) qs = {};
+            qs.minorversion = self.minor_version;
+          }
+
+          return self._get.call(self, entry.name, `/query`, qs);
+        },
+      };
+    }
+
+    function makeReportQuery(entry: Entry & { report: true }): {
+      query: ReportQuery;
+    } {
+      return {
+        query: function (parms, opts) {
+          var qs = parms || {};
+          if (opts && opts.reqid) {
+            qs.requestid = opts.reqid;
+          }
+          if (opts && opts.minor_version) {
+            qs.minorversion = opts.minor_version.toString();
+          } else if (self.minor_version) {
+            if (!qs) qs = {};
+            qs.minorversion = self.minor_version.toString();
+          }
+
+          return self._get.call(
+            self,
+            entry.name,
+            `/reports/${entry.fragment}`,
+            qs
+          );
+        },
+      };
+    }
+
     const batch = function (payload) {
       const self = this;
       return self._batch.call(self, payload);
@@ -805,7 +828,7 @@ export class QboConnector extends EventEmitter {
     let result = await response.json();
     verbose(`Received:\n${JSON.stringify(result)}`);
 
-    let credentials: Partial<credentials> = {};
+    let credentials: Partial<Credentials> = {};
     Object.assign(credentials, result);
 
     if (realm_id) {
@@ -826,7 +849,7 @@ export class QboConnector extends EventEmitter {
     this.setCredentials(credentials);
 
     //After the internal credentials are refreshed, emit the event.
-    this.emit('token.refreshed', credentials as credentials);
+    this.emit('token.refreshed', credentials as Credentials);
 
     return credentials;
   }
