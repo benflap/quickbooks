@@ -65,92 +65,60 @@ interface FetchOptions extends RequestInit {
   };
 }
 
-declare namespace AccountingAPI {
-  type FunctionOptions = {
-    minor_version?: number;
-    reqid?: string;
-  };
-  type QueryString = {
-    minorversion?: number;
-    requestid?: string;
-    operation?: 'update' | 'delete';
-    query?: string;
-  };
-
-  type ApiEntitiesCreated<TAccounting> = TAccounting extends ApiEntities
-    ? ApiEntities
-    : { intuit_tid: string };
-
-  type Create = (payload: any, options?: FunctionOptions) => Promise<any>;
-  type Createable<TEntity> = TEntity extends { create: true } ? Create : never;
-
-  type Update = (payload: any, options?: FunctionOptions) => Promise<any>;
-  type Updateable<TEntity> = TEntity extends { update: true } ? Update : never;
-
-  type Read = (id: number, options?: FunctionOptions) => Promise<any>;
-  type Readable<TEntity> = TEntity extends { read: true } ? Read : never;
-
-  type Delete = (payload: any, options?: FunctionOptions) => Promise<any>;
-  type Deleteable<TEntity> = TEntity extends { delete: true } ? Delete : never;
-
-  type AccountingQuery = (
-    queryStatement?: string | null,
-    options?: FunctionOptions
-  ) => Promise<any>;
-
-  type Queryable<TEntity> = TEntity extends { query: true }
-    ? QueryableReport<TEntity>
-    : AccountingQuery;
-  type QueryableReport<TEntity> = TEntity extends { report: true }
-    ? ReportQuery
-    : never;
-  type ReportQuery = (
-    params: { [key: string]: string },
-    options?: FunctionOptions
-  ) => Promise<any>;
-  type Batch = (payload: any) => Promise<any>;
-
-  type ApiEntities = {
-    [K in RegistryEntry['handle']]: {
-      name: K;
-      fragment: Extract<RegistryEntry, { handle: K }>['fragment'];
-      create: Createable<Extract<RegistryEntry, { handle: K }>>;
-      read: Readable<Extract<RegistryEntry, { handle: K }>>;
-      update: Updateable<Extract<RegistryEntry, { handle: K }>>;
-      delete: Deleteable<Extract<RegistryEntry, { handle: K }>>;
-      query: Queryable<Extract<RegistryEntry, { handle: K }>>;
-    };
-  };
-}
-
-type AccountingApi<TEntity extends ApiEntity> = {
-  name: ApiEntity['name'];
-  fragment: ApiEntity['fragment'];
-  create: AccountingAPI.Createable<TEntity>;
-  update: AccountingAPI.Updateable<TEntity>;
-  delete: AccountingAPI.Deleteable<TEntity>;
-  query: AccountingAPI.Queryable<TEntity>;
-  get: AccountingAPI.Readable<TEntity>;
+type FunctionOptions = {
+  minor_version?: number;
+  reqid?: string;
+};
+type QueryString = {
+  minorversion?: number;
+  requestid?: string;
+  operation?: 'update' | 'delete';
+  query?: string;
 };
 
-type AccountingApiOptions = {
-  name: ApiEntity['name'];
-  fragment: ApiEntity['fragment'];
-  create?: AccountingAPI.Create;
-  update?: AccountingAPI.Update;
-  delete?: AccountingAPI.Delete;
-  query?: AccountingAPI.AccountingQuery | AccountingAPI.ReportQuery;
-  get?: AccountingAPI.Read;
+type Create = (payload: any, options?: FunctionOptions) => Promise<any>;
+type Createable<TEntity> = TEntity extends { create: true } ? Create : never;
+
+type Update = (payload: any, options?: FunctionOptions) => Promise<any>;
+type Updateable<TEntity> = TEntity extends { update: true } ? Update : never;
+
+type Read = (id: number, options?: FunctionOptions) => Promise<any>;
+type Readable<TEntity> = TEntity extends { read: true } ? Read : never;
+
+type Delete = (payload: any, options?: FunctionOptions) => Promise<any>;
+type Deleteable<TEntity> = TEntity extends { delete: true } ? Delete : never;
+
+type AccountingQuery = (
+  queryStatement?: string | null,
+  options?: FunctionOptions
+) => Promise<any>;
+
+type Queryable<TEntity> = TEntity extends { query: true }
+  ? QueryableReport<TEntity>
+  : AccountingQuery;
+type QueryableReport<TEntity> = TEntity extends { report: true }
+  ? ReportQuery
+  : never;
+type ReportQuery = (
+  params: { [key: string]: string },
+  options?: FunctionOptions
+) => Promise<any>;
+type Batch = (payload: any) => Promise<any>;
+
+type ApiEntities = {
+  [K in RegistryEntry['handle']]: {
+    name: K;
+    fragment: Extract<RegistryEntry, { handle: K }>['fragment'];
+    create: Createable<Extract<RegistryEntry, { handle: K }>>;
+    read: Readable<Extract<RegistryEntry, { handle: K }>>;
+    update: Updateable<Extract<RegistryEntry, { handle: K }>>;
+    delete: Deleteable<Extract<RegistryEntry, { handle: K }>>;
+    query: Queryable<Extract<RegistryEntry, { handle: K }>>;
+  };
 };
 
-type AccountingApis = {
-  [key in (typeof registry)[number]['handle']]: AccountingApi<
-    (typeof registry)[number]
-  >;
-};
-
-type QboAccounting = AccountingApis & {
-  batch: AccountingAPI.Batch;
+type QboAccounting = ApiEntities & {
+  batch: Batch;
 };
 
 type ApiEntity = {
@@ -166,6 +134,23 @@ type ApiEntity = {
 };
 
 type RegistryEntry = (typeof registry)[number];
+
+interface BaseEntry {
+  readonly handle: string;
+  readonly name: string;
+  readonly fragment: string;
+}
+
+interface CRUDOperations {
+  readonly create?: boolean;
+  readonly read?: boolean;
+  readonly update?: boolean;
+  readonly delete?: boolean;
+  readonly query?: boolean;
+  readonly report?: boolean;
+}
+
+type Entry = BaseEntry & CRUDOperations;
 
 export interface QboConnector extends connectorConstuctorOptions {
   endpoints: {
@@ -381,9 +366,9 @@ export class QboConnector extends EventEmitter {
    * Get the object through which you can interact with the QuickBooks Online Accounting API.
    */
   accountingApi(): QboAccounting {
-    const api: Partial<AccountingAPI.ApiEntities> = {};
+    const api: Partial<ApiEntities> = {};
 
-    this.registry.forEach(function (entry) {
+    this.registry.forEach(function (entry: Entry) {
       const self = this;
 
       api[entry.handle] = {
@@ -392,7 +377,7 @@ export class QboConnector extends EventEmitter {
         ...(entry.create
           ? {
               create: function (payload, opts) {
-                var qs: AccountingAPI.QueryString = {};
+                var qs: QueryString = {};
                 if (opts && opts.reqid) {
                   qs.requestid = opts.reqid;
                 }
@@ -414,7 +399,7 @@ export class QboConnector extends EventEmitter {
         ...(entry.update
           ? {
               update: function (payload, opts) {
-                var qs: AccountingAPI.QueryString = { operation: 'update' };
+                var qs: QueryString = { operation: 'update' };
                 if (opts && opts.reqid) {
                   qs.requestid = opts.reqid;
                 }
@@ -436,7 +421,7 @@ export class QboConnector extends EventEmitter {
         ...(entry.read
           ? {
               get: function (id, opts) {
-                var qs: AccountingAPI.QueryString = null;
+                var qs: QueryString = null;
                 if (opts && opts.reqid) {
                   if (!qs) qs = {};
                   qs.requestid = opts.reqid;
@@ -460,7 +445,7 @@ export class QboConnector extends EventEmitter {
         ...(entry['delete']
           ? {
               delete: function (payload, opts) {
-                var qs: AccountingAPI.QueryString = { operation: 'delete' };
+                var qs: QueryString = { operation: 'delete' };
                 if (opts && opts.reqid) {
                   qs.requestid = opts.reqid;
                 }
@@ -485,7 +470,7 @@ export class QboConnector extends EventEmitter {
                 if (!queryStatement) {
                   queryStatement = `select * from ${entry.name}`;
                 }
-                var qs: AccountingAPI.QueryString = {
+                var qs: QueryString = {
                   query: queryStatement,
                 };
                 if (opts && opts.reqid) {
