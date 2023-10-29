@@ -56,19 +56,6 @@ type connectorConstuctorOptions = {
 
 import { registry } from './registry';
 
-export interface QboConnector extends connectorConstuctorOptions {
-  endpoints: {
-    authorization_endpoint: string;
-    token_endpoint: string;
-    revocation_endpoint: string;
-  } | null;
-  registry: Registry;
-  accounting: {
-    intuit_tid: string | null;
-    batch?: (payload: any) => Promise<any>;
-  } & [APIOptions["name"]]:  Partial<APIOptions>;
-}
-
 interface FetchOptions extends RequestInit {
   headers: {
     Accept: string;
@@ -90,17 +77,6 @@ declare namespace AccountingAPI {
     query?: string;
   };
 
-  type ApiEntities = {
-    [key in (typeof registry)[number]['handle']]: {
-      name: (typeof registry)[number]['name'][number];
-      fragment: (typeof registry)[number]['fragment'][number];
-      create: Createable<(typeof registry)[number]>;
-      get: Readable<(typeof registry)[number]>;
-      update: Updateable<(typeof registry)[number]>;
-      delete: Deleteable<(typeof registry)[number]>;
-      query: Queryable<(typeof registry)[number]>;
-    };
-  };
   type ApiEntitiesCreated<TAccounting> = TAccounting extends ApiEntities
     ? ApiEntities
     : { intuit_tid: string };
@@ -133,9 +109,31 @@ declare namespace AccountingAPI {
     options?: FunctionOptions
   ) => Promise<any>;
   type Batch = (payload: any) => Promise<any>;
+
+  type ApiEntities = {
+    [K in RegistryEntry['handle']]: {
+      name: K;
+      fragment: Extract<RegistryEntry, { handle: K }>['fragment'];
+      create: Createable<Extract<RegistryEntry, { handle: K }>>;
+      read: Readable<Extract<RegistryEntry, { handle: K }>>;
+      update: Updateable<Extract<RegistryEntry, { handle: K }>>;
+      delete: Deleteable<Extract<RegistryEntry, { handle: K }>>;
+      query: Queryable<Extract<RegistryEntry, { handle: K }>>;
+    };
+  };
 }
 
-type APIOptions = {
+type AccountingApi<TEntity extends ApiEntity> = {
+  name: ApiEntity['name'];
+  fragment: ApiEntity['fragment'];
+  create: AccountingAPI.Createable<TEntity>;
+  update: AccountingAPI.Updateable<TEntity>;
+  delete: AccountingAPI.Deleteable<TEntity>;
+  query: AccountingAPI.Queryable<TEntity>;
+  get: AccountingAPI.Readable<TEntity>;
+};
+
+type AccountingApiOptions = {
   name: ApiEntity['name'];
   fragment: ApiEntity['fragment'];
   create?: AccountingAPI.Create;
@@ -143,6 +141,16 @@ type APIOptions = {
   delete?: AccountingAPI.Delete;
   query?: AccountingAPI.AccountingQuery | AccountingAPI.ReportQuery;
   get?: AccountingAPI.Read;
+};
+
+type AccountingApis = {
+  [key in (typeof registry)[number]['handle']]: AccountingApi<
+    (typeof registry)[number]
+  >;
+};
+
+type QboAccounting = AccountingApis & {
+  batch: AccountingAPI.Batch;
 };
 
 type ApiEntity = {
@@ -157,7 +165,20 @@ type ApiEntity = {
   report?: boolean;
 };
 
-type Registry = ApiEntity[];
+type RegistryEntry = (typeof registry)[number];
+
+export interface QboConnector extends connectorConstuctorOptions {
+  endpoints: {
+    authorization_endpoint: string;
+    token_endpoint: string;
+    revocation_endpoint: string;
+  } | null;
+  registry: RegistryEntry[];
+  accounting: {
+    intuit_tid: string | null;
+  };
+  accounting_api: QboAccounting | null;
+}
 
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
@@ -288,6 +309,8 @@ export class QboConnector extends EventEmitter {
     this.accounting = {
       intuit_tid: null, //tid from most recent api call
     };
+
+    this.accounting_api = null;
   } //end constructor
 
   /**
@@ -357,123 +380,159 @@ export class QboConnector extends EventEmitter {
   /**
    * Get the object through which you can interact with the QuickBooks Online Accounting API.
    */
-  accountingApi() {
-    var self = this;
-    this.registry.forEach(function (e) {
-      var options: APIOptions = {
-        name: e.name,
-        fragment: e.fragment,
+  accountingApi(): QboAccounting {
+    const api: Partial<AccountingAPI.ApiEntities> = {};
+
+    this.registry.forEach(function (entry) {
+      const self = this;
+
+      api[entry.handle] = {
+        name: entry.name,
+        fragment: entry.fragment,
+        ...(entry.create
+          ? {
+              create: function (payload, opts) {
+                var qs: AccountingAPI.QueryString = {};
+                if (opts && opts.reqid) {
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  qs.minorversion = self.minor_version;
+                }
+                return self._post.call(
+                  self,
+                  entry.name,
+                  `/${entry.fragment}`,
+                  qs,
+                  payload
+                );
+              },
+            }
+          : {}),
+        ...(entry.update
+          ? {
+              update: function (payload, opts) {
+                var qs: AccountingAPI.QueryString = { operation: 'update' };
+                if (opts && opts.reqid) {
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  qs.minorversion = self.minor_version;
+                }
+                return self._post.call(
+                  self,
+                  entry.name,
+                  `/${entry.fragment}`,
+                  qs,
+                  payload
+                );
+              },
+            }
+          : {}),
+        ...(entry.read
+          ? {
+              get: function (id, opts) {
+                var qs: AccountingAPI.QueryString = null;
+                if (opts && opts.reqid) {
+                  if (!qs) qs = {};
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  if (!qs) qs = {};
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  if (!qs) qs = {};
+                  qs.minorversion = self.minor_version;
+                }
+                return self._get.call(
+                  self,
+                  entry.name,
+                  `/${entry.fragment}/${id}`,
+                  qs
+                );
+              },
+            }
+          : {}),
+        ...(entry['delete']
+          ? {
+              delete: function (payload, opts) {
+                var qs: AccountingAPI.QueryString = { operation: 'delete' };
+                if (opts && opts.reqid) {
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  qs.minorversion = self.minor_version;
+                }
+                return self._post.call(
+                  self,
+                  entry.name,
+                  `/${entry.fragment}`,
+                  qs,
+                  payload
+                );
+              },
+            }
+          : {}),
+        ...(entry.query
+          ? {
+              query: function (queryStatement, opts) {
+                if (!queryStatement) {
+                  queryStatement = `select * from ${entry.name}`;
+                }
+                var qs: AccountingAPI.QueryString = {
+                  query: queryStatement,
+                };
+                if (opts && opts.reqid) {
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  if (!qs) qs = {};
+                  qs.minorversion = self.minor_version;
+                }
+
+                return self._get.call(self, entry.name, `/query`, qs);
+              },
+            }
+          : {}),
+        ...(entry.report
+          ? {
+              query: function (parms, opts) {
+                var qs = parms || {};
+                if (opts && opts.reqid) {
+                  qs.requestid = opts.reqid;
+                }
+                if (opts && opts.minor_version) {
+                  qs.minorversion = opts.minor_version;
+                } else if (self.minor_version) {
+                  if (!qs) qs = {};
+                  qs.minorversion = self.minor_version;
+                }
+
+                return self._get.call(
+                  self,
+                  entry.name,
+                  `/reports/${entry.fragment}`,
+                  qs
+                );
+              },
+            }
+          : {}),
       };
-
-      if (e.create) {
-        options.create = function (payload, opts) {
-          var qs: AccountingAPI.QueryString = {};
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            qs.minorversion = self.minor_version;
-          }
-          return self._post.call(self, e.name, `/${e.fragment}`, qs, payload);
-        };
-      }
-
-      if (e.update) {
-        options.update = function (payload, opts) {
-          var qs: AccountingAPI.QueryString = { operation: 'update' };
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            qs.minorversion = self.minor_version;
-          }
-          return self._post.call(self, e.name, `/${e.fragment}`, qs, payload);
-        };
-      }
-
-      if (e.read) {
-        options.get = function (id, opts) {
-          var qs: AccountingAPI.QueryString = null;
-          if (opts && opts.reqid) {
-            if (!qs) qs = {};
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            if (!qs) qs = {};
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            if (!qs) qs = {};
-            qs.minorversion = self.minor_version;
-          }
-          return self._get.call(self, e.name, `/${e.fragment}/${id}`, qs);
-        };
-      }
-
-      if (e['delete']) {
-        options.delete = function (payload, opts) {
-          var qs: AccountingAPI.QueryString = { operation: 'delete' };
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            qs.minorversion = self.minor_version;
-          }
-          return self._post.call(self, e.name, `/${e.fragment}`, qs, payload);
-        };
-      }
-
-      if (e.query) {
-        options.query = function (queryStatement, opts) {
-          if (!queryStatement) {
-            queryStatement = `select * from ${e.name}`;
-          }
-          var qs: AccountingAPI.QueryString = {
-            query: queryStatement,
-          };
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            if (!qs) qs = {};
-            qs.minorversion = self.minor_version;
-          }
-
-          return self._get.call(self, e.name, `/query`, qs);
-        };
-      }
-
-      if (e.report) {
-        options.query = function (parms, opts) {
-          var qs = parms || {};
-          if (opts && opts.reqid) {
-            qs.requestid = opts.reqid;
-          }
-          if (opts && opts.minor_version) {
-            qs.minorversion = opts.minor_version;
-          } else if (self.minor_version) {
-            if (!qs) qs = {};
-            qs.minorversion = self.minor_version;
-          }
-
-          return self._get.call(self, e.name, `/reports/${e.fragment}`, qs);
-        };
-      }
-
-      self.accounting[e.handle] = options;
     });
-    self.accounting.batch = function (payload) {
+    const batch = function (payload) {
+      const self = this;
       return self._batch.call(self, payload);
-    }; //and the batch method as well...
+    };
 
-    return self.accounting;
+    return Object.assign(this.accounting_api, { batch });
   }
 
   /**
