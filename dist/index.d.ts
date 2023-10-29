@@ -58,7 +58,7 @@ type ApiEntities = {
         create: Createable<Extract<RegistryEntry, {
             handle: K;
         }>>;
-        read: Readable<Extract<RegistryEntry, {
+        get: Readable<Extract<RegistryEntry, {
             handle: K;
         }>>;
         update: Updateable<Extract<RegistryEntry, {

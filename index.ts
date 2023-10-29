@@ -111,7 +111,7 @@ type ApiEntities = {
     name: K;
     fragment: Extract<RegistryEntry, { handle: K }>['fragment'];
     create: Createable<Extract<RegistryEntry, { handle: K }>>;
-    read: Readable<Extract<RegistryEntry, { handle: K }>>;
+    get: Readable<Extract<RegistryEntry, { handle: K }>>;
     update: Updateable<Extract<RegistryEntry, { handle: K }>>;
     delete: Deleteable<Extract<RegistryEntry, { handle: K }>>;
     query: Queryable<Extract<RegistryEntry, { handle: K }>>;
