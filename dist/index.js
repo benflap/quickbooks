@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 /*
   Copyright 2019-2021 Apigrate LLC
 
@@ -192,28 +183,26 @@ export class QboConnector extends EventEmitter {
         }
         // verbose(`${this.access_token}\n${this.refresh_token}\n${this.realm_id}`)
     }
-    loadDiscoveryInfo() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.endpoints) {
-                let response = null;
-                try {
-                    let doc_url = this.is_sandbox
-                        ? DISCOVERY_URL_SANDBOX
-                        : DISCOVERY_URL_PRODUCTION;
-                    debug(`Loading discovery document from ${doc_url}`);
-                    response = yield fetch(doc_url);
-                    let { authorization_endpoint, token_endpoint, revocation_endpoint } = yield response.json();
-                    this.endpoints = {
-                        authorization_endpoint,
-                        token_endpoint,
-                        revocation_endpoint,
-                    };
-                }
-                catch (err) {
-                    throw new ApiError(`Intuit Discovery Document Error: ${err.messsage}`, null, response.headers.get('intuit_tid'));
-                }
+    async loadDiscoveryInfo() {
+        if (!this.endpoints) {
+            let response = null;
+            try {
+                let doc_url = this.is_sandbox
+                    ? DISCOVERY_URL_SANDBOX
+                    : DISCOVERY_URL_PRODUCTION;
+                debug(`Loading discovery document from ${doc_url}`);
+                response = await fetch(doc_url);
+                let { authorization_endpoint, token_endpoint, revocation_endpoint } = await response.json();
+                this.endpoints = {
+                    authorization_endpoint,
+                    token_endpoint,
+                    revocation_endpoint,
+                };
             }
-        });
+            catch (err) {
+                throw new ApiError(`Intuit Discovery Document Error: ${err.messsage}`, null, response.headers.get('intuit_tid'));
+            }
+        }
     }
     /**
      * Get the object through which you can interact with the QuickBooks Online Accounting API.
@@ -222,7 +211,16 @@ export class QboConnector extends EventEmitter {
         const self = this;
         const api = {};
         this.registry.forEach(function (entry) {
-            api[entry.handle] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ name: entry.name, fragment: entry.fragment }, (isCreatable(entry) ? makeCreate(entry) : {})), (isUpdateable(entry) ? makeUpdate(entry) : {})), (isReadable(entry) ? makeRead(entry) : {})), (isDeletable(entry) ? makeDelete(entry) : {})), (isQueryable(entry) ? makeAccountingQuery(entry) : {})), (isReportable(entry) ? makeReportQuery(entry) : {}));
+            api[entry.handle] = {
+                name: entry.name,
+                fragment: entry.fragment,
+                ...(isCreatable(entry) ? makeCreate(entry) : {}),
+                ...(isUpdateable(entry) ? makeUpdate(entry) : {}),
+                ...(isReadable(entry) ? makeRead(entry) : {}),
+                ...(isDeletable(entry) ? makeDelete(entry) : {}),
+                ...(isQueryable(entry) ? makeAccountingQuery(entry) : {}),
+                ...(isReportable(entry) ? makeReportQuery(entry) : {}),
+            };
         });
         function isCreatable(entry) {
             return entry.create === true;
@@ -371,20 +369,14 @@ export class QboConnector extends EventEmitter {
       @param {string} uri (after base url).
       @param {object} qs query string hash
     */
-    _get(entityName, uri, qs) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.doFetch('GET', `${uri}`, qs, null, { entityName });
-        });
+    async _get(entityName, uri, qs) {
+        return this.doFetch('GET', `${uri}`, qs, null, { entityName });
     }
-    _post(entityName, uri, qs, body) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.doFetch('POST', `${uri}`, qs, body, { entityName });
-        });
+    async _post(entityName, uri, qs, body) {
+        return this.doFetch('POST', `${uri}`, qs, body, { entityName });
     }
-    _batch(body) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.doFetch('POST', `/batch`, null, body);
-        });
+    async _batch(body) {
+        return this.doFetch('POST', `/batch`, null, body);
     }
     /**
      * Internal method to make an API call using node-fetch.
@@ -397,154 +389,152 @@ export class QboConnector extends EventEmitter {
      * @param {object} options.headers hash of headers. Specifying the headers option completely
      * replaces the default headers.
      */
-    doFetch(method, url, query, payload, options = {}) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.refresh_token || !this.access_token || !this.realm_id) {
-                if (!this.refresh_token)
-                    verbose(`Missing refresh_token.`);
-                if (!this.access_token)
-                    verbose(`Missing access_token.`);
-                if (!this.realm_id)
-                    verbose(`Missing realm_id.`);
-                if (this.credential_initializer) {
-                    verbose(`Obtaining credentials from initializer...`);
-                    let creds = yield this.credential_initializer();
-                    if (creds) {
-                        this.setCredentials(creds);
-                    }
-                    if (!this.refresh_token || !this.access_token || !this.realm_id) {
-                        throw new CredentialsError('Missing credentials after initializer.');
-                    }
+    async doFetch(method, url, query, payload, options = {}) {
+        if (!this.refresh_token || !this.access_token || !this.realm_id) {
+            if (!this.refresh_token)
+                verbose(`Missing refresh_token.`);
+            if (!this.access_token)
+                verbose(`Missing access_token.`);
+            if (!this.realm_id)
+                verbose(`Missing realm_id.`);
+            if (this.credential_initializer) {
+                verbose(`Obtaining credentials from initializer...`);
+                let creds = await this.credential_initializer();
+                if (creds) {
+                    this.setCredentials(creds);
                 }
-                else {
-                    throw new CredentialsError('Missing credentials. Please provide them explicitly, or use an initializer function.');
+                if (!this.refresh_token || !this.access_token || !this.realm_id) {
+                    throw new CredentialsError('Missing credentials after initializer.');
                 }
             }
-            if (!options.retries) {
-                options.retries = 0;
+            else {
+                throw new CredentialsError('Missing credentials. Please provide them explicitly, or use an initializer function.');
             }
-            let fetchOpts = {
-                method,
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': USER_AGENT,
-                },
-            };
-            if (this.access_token) {
-                fetchOpts.headers.Authorization = `Bearer ${this.access_token}`;
+        }
+        if (!options.retries) {
+            options.retries = 0;
+        }
+        let fetchOpts = {
+            method,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': USER_AGENT,
+            },
+        };
+        if (this.access_token) {
+            fetchOpts.headers.Authorization = `Bearer ${this.access_token}`;
+        }
+        if (options && options.headers) {
+            fetchOpts.headers = options.headers;
+        }
+        let qstring = '';
+        if (query) {
+            qstring = queryString.stringify(query);
+            qstring = '?' + qstring;
+        }
+        let full_url = `${this.base_url}/v3/company/${this.realm_id}${url}${qstring}`;
+        if (payload) {
+            if (fetchOpts.headers['Content-Type'] ===
+                'application/x-www-form-urlencoded') {
+                fetchOpts.body = payload;
+                verbose(`  raw payload: ${payload}`);
             }
-            if (options && options.headers) {
-                fetchOpts.headers = options.headers;
+            else {
+                //assume json
+                fetchOpts.body = JSON.stringify(payload);
+                verbose(`  JSON payload: ${JSON.stringify(payload)}`);
             }
-            let qstring = '';
-            if (query) {
-                qstring = queryString.stringify(query);
-                qstring = '?' + qstring;
+        }
+        try {
+            debug(`${method}${options.entityName ? ' ' + options.entityName : ''} ${full_url}`);
+            let response = await fetch(full_url, fetchOpts);
+            let result = null;
+            this.accounting.intuit_tid = response.headers.get('intuit_tid'); //record last tid.
+            verbose(`  Intuit TID: `, response.headers.get('intuit_tid'));
+            if (response.ok) {
+                debug(`  ...OK HTTP-${response.status}`);
+                result = await response.json();
+                verbose(`  response payload: ${JSON.stringify(result)}`);
             }
-            let full_url = `${this.base_url}/v3/company/${this.realm_id}${url}${qstring}`;
-            if (payload) {
-                if (fetchOpts.headers['Content-Type'] ===
-                    'application/x-www-form-urlencoded') {
-                    fetchOpts.body = payload;
-                    verbose(`  raw payload: ${payload}`);
+            else {
+                debug(`  ...Error. HTTP-${response.status}`);
+                //Note: Some APIs return HTML or text depending on status code...
+                if (response.status >= 300 && response.status < 400) {
+                    //redirection
                 }
-                else {
-                    //assume json
-                    fetchOpts.body = JSON.stringify(payload);
-                    verbose(`  JSON payload: ${JSON.stringify(payload)}`);
+                else if (response.status >= 400 && response.status < 500) {
+                    if (response.status === 401) {
+                        //These will be retried once after attempting to refresh the access token.
+                        let textResult = await response.text();
+                        throw new ApiAuthError(textResult);
+                    }
+                    else if (response.status === 404) {
+                        throw new ApiError('Resource not found. Recommendation: check resource is supported or base URL configuration.', `${method} ${full_url}`, response.headers.get('intuit_tid'));
+                    }
+                    else if (response.status === 429) {
+                        //API Throttling Error
+                        let textResult = await response.text();
+                        throw new ApiThrottlingError('API request limit reached.', textResult, response.headers.get('intuit_tid'));
+                    }
+                    // otherclient errors
+                    let result = await response.json();
+                    let explain = '';
+                    if (result && result.Fault) {
+                        result.Fault.Error.forEach(function (x) {
+                            //This function just logs output (or returns the result if "not found")
+                            switch (x.code) {
+                                case '500':
+                                    explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: possible misconfiguration the entity name is not recognized.`;
+                                    break;
+                                case '2010':
+                                    explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: possible misconfiguration the entity name is not recognized.`;
+                                    break;
+                                case '4000':
+                                    explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: check your query, including punctuation etc. For example, you might be using double quotes instead of single quotes.`;
+                                    break;
+                                case '4001':
+                                    explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: check your entity and attribute names to make sure the match QuickBooks API specifications.`;
+                                    break;
+                                default:
+                                    explain += `\nError code ${x.code}. ${x.Detail}.`;
+                            }
+                        });
+                    }
+                    if (!explain)
+                        explain = JSON.stringify(result);
+                    throw new ApiError(`Client Error (HTTP ${response.status}) ${explain}`, result, response.headers.get('intuit_tid'));
                 }
-            }
-            try {
-                debug(`${method}${options.entityName ? ' ' + options.entityName : ''} ${full_url}`);
-                let response = yield fetch(full_url, fetchOpts);
-                let result = null;
-                this.accounting.intuit_tid = response.headers.get('intuit_tid'); //record last tid.
-                verbose(`  Intuit TID: `, response.headers.get('intuit_tid'));
-                if (response.ok) {
-                    debug(`  ...OK HTTP-${response.status}`);
-                    result = yield response.json();
-                    verbose(`  response payload: ${JSON.stringify(result)}`);
-                }
-                else {
-                    debug(`  ...Error. HTTP-${response.status}`);
-                    //Note: Some APIs return HTML or text depending on status code...
-                    if (response.status >= 300 && response.status < 400) {
-                        //redirection
-                    }
-                    else if (response.status >= 400 && response.status < 500) {
-                        if (response.status === 401) {
-                            //These will be retried once after attempting to refresh the access token.
-                            let textResult = yield response.text();
-                            throw new ApiAuthError(textResult);
-                        }
-                        else if (response.status === 404) {
-                            throw new ApiError('Resource not found. Recommendation: check resource is supported or base URL configuration.', `${method} ${full_url}`, response.headers.get('intuit_tid'));
-                        }
-                        else if (response.status === 429) {
-                            //API Throttling Error
-                            let textResult = yield response.text();
-                            throw new ApiThrottlingError('API request limit reached.', textResult, response.headers.get('intuit_tid'));
-                        }
-                        // otherclient errors
-                        let result = yield response.json();
-                        let explain = '';
-                        if (result && result.Fault) {
-                            result.Fault.Error.forEach(function (x) {
-                                //This function just logs output (or returns the result if "not found")
-                                switch (x.code) {
-                                    case '500':
-                                        explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: possible misconfiguration the entity name is not recognized.`;
-                                        break;
-                                    case '2010':
-                                        explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: possible misconfiguration the entity name is not recognized.`;
-                                        break;
-                                    case '4000':
-                                        explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: check your query, including punctuation etc. For example, you might be using double quotes instead of single quotes.`;
-                                        break;
-                                    case '4001':
-                                        explain += `\nError code ${x.code}. ${x.Detail}. Recommendation: check your entity and attribute names to make sure the match QuickBooks API specifications.`;
-                                        break;
-                                    default:
-                                        explain += `\nError code ${x.code}. ${x.Detail}.`;
-                                }
-                            });
-                        }
-                        if (!explain)
-                            explain = JSON.stringify(result);
-                        throw new ApiError(`Client Error (HTTP ${response.status}) ${explain}`, result, response.headers.get('intuit_tid'));
-                    }
-                    else if (response.status >= 500) {
-                        //server side errors
-                        verbose(`  server error. response payload: ${JSON.stringify(result)}`);
-                        throw new ApiError(`Server Error (HTTP ${response.status})`, result, response.headers.get('intuit_tid'));
-                    }
-                    return result;
+                else if (response.status >= 500) {
+                    //server side errors
+                    verbose(`  server error. response payload: ${JSON.stringify(result)}`);
+                    throw new ApiError(`Server Error (HTTP ${response.status})`, result, response.headers.get('intuit_tid'));
                 }
                 return result;
             }
-            catch (err) {
-                if (err instanceof ApiAuthError) {
-                    if (options.retries < 1) {
-                        debug(`Attempting to refresh access token...`);
-                        //Refresh the access token.
-                        yield this.getAccessToken();
-                        options.retries += 1;
-                        debug(`...refreshed OK.`);
-                        //Retry the request
-                        debug(`Retrying (${options.retries}) request...`);
-                        let retryResult = yield this.doFetch(method, url, query, payload, options);
-                        return retryResult;
-                    }
-                    else {
-                        debug(`No further retry (already retried ${options.retries} times).`);
-                        throw err;
-                    }
+            return result;
+        }
+        catch (err) {
+            if (err instanceof ApiAuthError) {
+                if (options.retries < 1) {
+                    debug(`Attempting to refresh access token...`);
+                    //Refresh the access token.
+                    await this.getAccessToken();
+                    options.retries += 1;
+                    debug(`...refreshed OK.`);
+                    //Retry the request
+                    debug(`Retrying (${options.retries}) request...`);
+                    let retryResult = await this.doFetch(method, url, query, payload, options);
+                    return retryResult;
                 }
-                //All other errors are re-thrown.
-                throw err;
+                else {
+                    debug(`No further retry (already retried ${options.retries} times).`);
+                    throw err;
+                }
             }
-        });
+            //All other errors are re-thrown.
+            throw err;
+        }
     }
     /**
      * Calls the Intuit OAuth2 token endpoint for either an authorization_code grant (if the code is provided) or a
@@ -568,110 +558,106 @@ export class QboConnector extends EventEmitter {
      *    x_refresh_token_expires_in: number //(number of seconds refresh token lives)
      *  }
      */
-    getAccessToken(code, realm_id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.loadDiscoveryInfo();
-            let fetchOpts = {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': USER_AGENT,
-                    Authorization: `Basic ${Buffer.from(this.client_id + ':' + this.client_secret).toString('base64')}`,
-                },
-            };
-            verbose(`Headers: ${JSON.stringify(fetchOpts.headers, null, 2)}`);
-            let grant_type = 'refresh_token';
-            if (code) {
-                grant_type = 'authorization_code';
-                debug(`Exchanging authorization code for an Intuit access token...`);
-                fetchOpts.body = `code=${encodeURIComponent(code)}&grant_type=${grant_type}&redirect_uri=${encodeURIComponent(this.redirect_uri)}`;
-            }
-            else {
-                debug('Refreshing Intuit access token...');
-                fetchOpts.body = `grant_type=${grant_type}&refresh_token=${encodeURIComponent(this.refresh_token)}`;
-            }
-            verbose(`Sending: ${fetchOpts.body}`);
-            let response = yield fetch(this.endpoints.token_endpoint, fetchOpts);
-            if (!response.ok) {
-                debug('...unsuccessful.');
-                let result = yield response.json();
-                throw new CredentialsError(`Unsuccessful ${grant_type} grant. (HTTP-${response.status}): ${JSON.stringify(result)}`);
-            }
-            let result = yield response.json();
-            verbose(`Received:\n${JSON.stringify(result)}`);
-            let credentials = {};
-            Object.assign(credentials, result);
-            if (realm_id) {
-                // if realm_id is explicitly provided, initialize with existing realm id - usually realm id is not available on a refresh
-                credentials.realm_id = realm_id;
-            }
-            else if (this.realm_id) {
-                // otherwise use internal realm id if available
-                credentials.realm_id = this.realm_id;
-            }
-            if (result.realmId) {
-                //Note spelling! Intuit calls it realmId not realm_id.
-                //If realmId is ever returned explicitly, use it.
-                credentials.realm_id = result.realmId;
-            }
-            // Reset the internal credentials (this detects changes)
-            this.setCredentials(credentials);
-            //After the internal credentials are refreshed, emit the event.
-            this.emit('token.refreshed', credentials);
-            return credentials;
-        });
+    async getAccessToken(code, realm_id) {
+        await this.loadDiscoveryInfo();
+        let fetchOpts = {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': USER_AGENT,
+                Authorization: `Basic ${Buffer.from(this.client_id + ':' + this.client_secret).toString('base64')}`,
+            },
+        };
+        verbose(`Headers: ${JSON.stringify(fetchOpts.headers, null, 2)}`);
+        let grant_type = 'refresh_token';
+        if (code) {
+            grant_type = 'authorization_code';
+            debug(`Exchanging authorization code for an Intuit access token...`);
+            fetchOpts.body = `code=${encodeURIComponent(code)}&grant_type=${grant_type}&redirect_uri=${encodeURIComponent(this.redirect_uri)}`;
+        }
+        else {
+            debug('Refreshing Intuit access token...');
+            fetchOpts.body = `grant_type=${grant_type}&refresh_token=${encodeURIComponent(this.refresh_token)}`;
+        }
+        verbose(`Sending: ${fetchOpts.body}`);
+        let response = await fetch(this.endpoints.token_endpoint, fetchOpts);
+        if (!response.ok) {
+            debug('...unsuccessful.');
+            let result = await response.json();
+            throw new CredentialsError(`Unsuccessful ${grant_type} grant. (HTTP-${response.status}): ${JSON.stringify(result)}`);
+        }
+        let result = await response.json();
+        verbose(`Received:\n${JSON.stringify(result)}`);
+        let credentials = {};
+        Object.assign(credentials, result);
+        if (realm_id) {
+            // if realm_id is explicitly provided, initialize with existing realm id - usually realm id is not available on a refresh
+            credentials.realm_id = realm_id;
+        }
+        else if (this.realm_id) {
+            // otherwise use internal realm id if available
+            credentials.realm_id = this.realm_id;
+        }
+        if (result.realmId) {
+            //Note spelling! Intuit calls it realmId not realm_id.
+            //If realmId is ever returned explicitly, use it.
+            credentials.realm_id = result.realmId;
+        }
+        // Reset the internal credentials (this detects changes)
+        this.setCredentials(credentials);
+        //After the internal credentials are refreshed, emit the event.
+        this.emit('token.refreshed', credentials);
+        return credentials;
     }
     /**
      * Disconnects the user from Intuit QBO API (invalidates the access token and request token).
      * After calling this method, the user will be forced to authenticate again.
      * Emits the "token.revoked" event, handing back the data passed back from QBO.
      */
-    disconnect() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                yield this.loadDiscoveryInfo();
-                debug(`Disconnecting from the Intuit API.`);
-                if (this.credential_initializer) {
-                    //Get latest credentials before disconnecting.
-                    let creds = yield this.credential_initializer();
-                    verbose(`Obtained credentials from initializer:${JSON.stringify(creds)}.`);
-                    if (creds) {
-                        this.setCredentials(creds);
-                    }
+    async disconnect() {
+        try {
+            await this.loadDiscoveryInfo();
+            debug(`Disconnecting from the Intuit API.`);
+            if (this.credential_initializer) {
+                //Get latest credentials before disconnecting.
+                let creds = await this.credential_initializer();
+                verbose(`Obtained credentials from initializer:${JSON.stringify(creds)}.`);
+                if (creds) {
+                    this.setCredentials(creds);
                 }
-                if (this.refresh_token) {
-                    let payload = { token: this.refresh_token };
-                    verbose(`Disconnection payload:\n${JSON.stringify(payload)}`);
-                    let fetchOpts = {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Basic ${Buffer.from(this.client_id + ':' + this.client_secret).toString('base64')}`,
-                            'Content-Type': 'application/json',
-                            'User-Agent': USER_AGENT,
-                        },
-                        body: JSON.stringify(payload),
-                    };
-                    let response = yield fetch(this.endpoints.revocation_endpoint, fetchOpts);
-                    let result = yield response.text();
-                    if (response.ok) {
-                        this.emit('token.revoked', result);
-                    }
-                    else {
-                        console.warn(`Intuit responded with HTTP-${response.status} ${result}`);
-                    }
-                    return result;
+            }
+            if (this.refresh_token) {
+                let payload = { token: this.refresh_token };
+                verbose(`Disconnection payload:\n${JSON.stringify(payload)}`);
+                let fetchOpts = {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Basic ${Buffer.from(this.client_id + ':' + this.client_secret).toString('base64')}`,
+                        'Content-Type': 'application/json',
+                        'User-Agent': USER_AGENT,
+                    },
+                    body: JSON.stringify(payload),
+                };
+                let response = await fetch(this.endpoints.revocation_endpoint, fetchOpts);
+                let result = await response.text();
+                if (response.ok) {
+                    this.emit('token.revoked', result);
                 }
                 else {
-                    debug('No token found to revoke.');
+                    console.warn(`Intuit responded with HTTP-${response.status} ${result}`);
                 }
+                return result;
             }
-            catch (err) {
-                console.error(err);
-                console.error(`Error during Intuit API disconnection process. ${JSON.stringify(err, null, 2)}`);
-                throw err;
+            else {
+                debug('No token found to revoke.');
             }
-        });
+        }
+        catch (err) {
+            console.error(err);
+            console.error(`Error during Intuit API disconnection process. ${JSON.stringify(err, null, 2)}`);
+            throw err;
+        }
     }
     /**
       Returns a fully populated validation URL to be used for initiating an Intuit OAuth request.
@@ -685,17 +671,15 @@ export class QboConnector extends EventEmitter {
       1. `code` (what you exchange for a token)
       2. `realmId` - this identifies the QBO company and should be used (note spelling)
     */
-    getIntuitAuthorizationUrl(state) {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.loadDiscoveryInfo();
-            var url = `${this.endpoints.authorization_endpoint}` +
-                `?client_id=${encodeURIComponent(this.client_id)}` +
-                `&scope=${encodeURIComponent('com.intuit.quickbooks.accounting')}` +
-                `&redirect_uri=${encodeURIComponent(this.redirect_uri)}` +
-                `&response_type=code` +
-                `&state=${encodeURIComponent(state)}`;
-            return url;
-        });
+    async getIntuitAuthorizationUrl(state) {
+        await this.loadDiscoveryInfo();
+        var url = `${this.endpoints.authorization_endpoint}` +
+            `?client_id=${encodeURIComponent(this.client_id)}` +
+            `&scope=${encodeURIComponent('com.intuit.quickbooks.accounting')}` +
+            `&redirect_uri=${encodeURIComponent(this.redirect_uri)}` +
+            `&response_type=code` +
+            `&state=${encodeURIComponent(state)}`;
+        return url;
     }
 } //QboConnector
 /** An API error from the connector, typically including a captured `payload` object you can work with to obtain more information about the error and how to handle it. */
