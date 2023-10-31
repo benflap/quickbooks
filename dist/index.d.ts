@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from 'node:events';
+export declare const PRODUCTION_API_BASE_URL = "https://quickbooks.api.intuit.com";
+export declare const SANDBOX_API_BASE_URL = "https://sandbox-quickbooks.api.intuit.com";
 import { type RequestInit } from 'node-fetch';
 export type Credentials = {
     access_token: string;

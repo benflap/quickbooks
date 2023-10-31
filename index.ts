@@ -30,11 +30,8 @@ const DISCOVERY_URL_SANDBOX =
 
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 
-const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
-const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
-
-exports.PRODUCTION_API_BASE_URL = PRODUCTION_API_BASE_URL;
-exports.SANDBOX_API_BASE_URL = SANDBOX_API_BASE_URL;
+export const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
+export const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
 
 import { type RequestInit } from 'node-fetch';
 

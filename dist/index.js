@@ -22,10 +22,8 @@ import { EventEmitter } from 'node:events';
 const DISCOVERY_URL_PRODUCTION = 'https://developer.api.intuit.com/.well-known/openid_configuration';
 const DISCOVERY_URL_SANDBOX = 'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
-const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
-const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
-exports.PRODUCTION_API_BASE_URL = PRODUCTION_API_BASE_URL;
-exports.SANDBOX_API_BASE_URL = SANDBOX_API_BASE_URL;
+export const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
+export const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
  *
