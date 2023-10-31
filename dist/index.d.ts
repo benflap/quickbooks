@@ -126,9 +126,7 @@ export declare class QboConnector extends EventEmitter {
     /**
      * Get the object through which you can interact with the QuickBooks Online Accounting API.
      */
-    accountingApi(): Partial<ApiEntities> & {
-        batch: (payload: any) => any;
-    };
+    accountingApi(): QboAccounting;
     /**
       Sends any GET request for API calls. Includes token refresh retry capabilities.
       @param {string} entityName the name of the entity in the registry.
