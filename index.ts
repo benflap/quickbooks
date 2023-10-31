@@ -540,7 +540,7 @@ export class QboConnector extends EventEmitter {
       return self._batch.call(self, payload);
     };
 
-    return Object.assign(this.accounting_api, { batch });
+    return Object.assign(api, { batch });
   }
 
   /**

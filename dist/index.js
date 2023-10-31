@@ -361,7 +361,7 @@ export class QboConnector extends EventEmitter {
             const self = this;
             return self._batch.call(self, payload);
         };
-        return Object.assign(this.accounting_api, { batch });
+        return Object.assign(api, { batch });
     }
     /**
       Sends any GET request for API calls. Includes token refresh retry capabilities.
