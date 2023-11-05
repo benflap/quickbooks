@@ -111,7 +111,9 @@ type ApiEntities = {
     get: Readable<Extract<RegistryEntry, { handle: K }>>;
     update: Updateable<Extract<RegistryEntry, { handle: K }>>;
     delete: Deleteable<Extract<RegistryEntry, { handle: K }>>;
-    query: Queryable<Extract<RegistryEntry, { handle: K }>>;
+    query:
+      | Queryable<Extract<RegistryEntry, { handle: K }>>
+      | QueryableReport<Extract<RegistryEntry, { handle: K }>>;
   };
 };
 

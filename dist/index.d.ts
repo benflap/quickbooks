@@ -50,6 +50,12 @@ type AccountingQuery = (queryStatement?: string | null, options?: FunctionOption
 type Queryable<TEntity> = TEntity extends {
     query: true;
 } ? AccountingQuery : never;
+type QueryableReport<TEntity> = TEntity extends {
+    report: true;
+} ? ReportQuery : never;
+type ReportQuery = (params: {
+    [key: string]: string;
+}, options?: FunctionOptions) => Promise<any>;
 type Batch = (payload: any) => Promise<any>;
 type ApiEntities = {
     [K in RegistryEntry['handle']]: {
@@ -70,6 +76,8 @@ type ApiEntities = {
             handle: K;
         }>>;
         query: Queryable<Extract<RegistryEntry, {
+            handle: K;
+        }>> | QueryableReport<Extract<RegistryEntry, {
             handle: K;
         }>>;
     };
