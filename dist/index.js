@@ -24,6 +24,7 @@ const DISCOVERY_URL_SANDBOX = 'https://developer.api.intuit.com/.well-known/open
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 export const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
 export const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
+import { registry } from './registry';
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
  *
@@ -73,75 +74,7 @@ export class QboConnector extends EventEmitter {
           token_endpoint: null,
           revocation_endpoint: null,
         };*/
-        // prettier-ignore
-        this.registry = [
-            //transaction entities
-            { handle: 'Bill', name: 'Bill', fragment: 'bill', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'BillPayment', name: 'BillPayment', fragment: 'billpayment', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'CreditMemo', name: 'CreditMemo', fragment: 'creditmemo', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Deposit', name: 'Deposit', fragment: 'deposit', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Estimate', name: 'Estimate', fragment: 'estimate', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Invoice', name: 'Invoice', fragment: 'invoice', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'JournalEntry', name: 'JournalEntry', fragment: 'journalentry', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Payment', name: 'Payment', fragment: 'payment', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Purchase', name: 'Purchase', fragment: 'purchase', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Purchaseorder', name: 'Purchaseorder', fragment: 'purchaseorder', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'RefundReceipt', name: 'RefundReceipt', fragment: 'refundreceipt', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'SalesReceipt', name: 'SalesReceipt', fragment: 'salesreceipt', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'TimeActivity', name: 'TimeActivity', fragment: 'timeactivity', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Transfer', name: 'Transfer', fragment: 'transfer', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'VendorCredit', name: 'VendorCredit', fragment: 'vendorcredit', query: true, create: true, read: true, update: true, delete: true },
-            //named list entities
-            { handle: 'Account', name: 'Account', fragment: 'account', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Budget', name: 'Budget', fragment: 'budget', query: true, create: false, read: true, update: false, delete: false },
-            { handle: 'Class', name: 'Class', fragment: 'class', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'CompanyCurrency', name: 'CompanyCurrency', fragment: 'companycurrency', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'Customer', name: 'Customer', fragment: 'customer', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Department', name: 'Department', fragment: 'department', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Employee', name: 'Employee', fragment: 'employee', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Item', name: 'Item', fragment: 'item', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Journalcode', name: 'Journalcode', fragment: 'journalcode', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'PaymentMethod', name: 'PaymentMethod', fragment: 'paymentmethod', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'TaxAgency', name: 'TaxAgency', fragment: 'taxagency', query: true, create: true, read: true, update: false, delete: false },
-            { handle: 'TaxCode', name: 'TaxCode', fragment: 'taxcode', query: true, create: false, read: true, update: false, delete: false },
-            { handle: 'TaxRate', name: 'TaxRate', fragment: 'taxrate', query: true, create: true, read: true, update: false, delete: false },
-            { handle: 'TaxService', name: 'TaxService', fragment: 'taxservice/taxcode', query: false, create: true, read: false, update: false, delete: false },
-            { handle: 'Term', name: 'Term', fragment: 'term', query: true, create: true, read: true, update: true, delete: false },
-            { handle: 'Vendor', name: 'Vendor', fragment: 'vendor', query: true, create: true, read: true, update: true, delete: false },
-            //supporting entities
-            { handle: 'Attachable', name: 'Attachable', fragment: 'attachable', query: true, create: true, read: true, update: true, delete: true },
-            { handle: 'CompanyInfo', name: 'CompanyInfo', fragment: 'companyinfo', query: true, create: false, read: true, update: true, delete: false },
-            { handle: 'ExchangeRate', name: 'ExchangeRate', fragment: 'exchangerate', query: true, create: false, read: false, update: true, delete: false },
-            { handle: 'Preferences', name: 'Preferences', fragment: 'preferences', query: true, create: false, read: true, update: true, delete: false },
-            //reports
-            { handle: 'AccountListDetailReport', name: 'AccountList', fragment: 'AccountList', report: true },
-            { handle: 'APAgingDetailReport', name: 'AgedPayableDetail', fragment: 'AgedPayableDetail', report: true },
-            { handle: 'APAgingSummaryReport', name: 'AgedPayables', fragment: 'AgedPayables', report: true },
-            { handle: 'ARAgingDetailReport', name: 'AgedReceivableDetail', fragment: 'AgedReceivableDetail', report: true },
-            { handle: 'ARAgingSummaryReport', name: 'AgedReceivables', fragment: 'AgedReceivables', report: true },
-            { handle: 'BalanceSheetReport', name: 'BalanceSheet', fragment: 'BalanceSheet', report: true },
-            { handle: 'CashFlowReport', name: 'CashFlow', fragment: 'CashFlow', report: true },
-            { handle: 'CustomerBalanceReport', name: 'CustomerBalance', fragment: 'CustomerBalance', report: true },
-            { handle: 'CustomerBalanceDetailReport', name: 'CustomerBalanceDetail', fragment: 'CustomerBalanceDetail', report: true },
-            { handle: 'CustomerIncomeReport', name: 'CustomerIncome', fragment: 'CustomerIncome', report: true },
-            { handle: 'GeneralLedgerReport', name: 'GeneralLedger', fragment: 'GeneralLedger', report: true },
-            { handle: 'GeneralLedgerReportFR', name: 'GeneralLedgerFR', fragment: 'GeneralLedgerFR', report: true },
-            { handle: 'InventoryValuationSummaryReport', name: 'InventoryValuationSummary', fragment: 'InventoryValuationSummary', report: true },
-            { handle: 'JournalReport', name: 'JournalReport', fragment: 'JournalReport', report: true },
-            { handle: 'ProfitAndLossReport', name: 'ProfitAndLoss', fragment: 'ProfitAndLoss', report: true },
-            { handle: 'ProfitAndLossDetailReport', name: 'ProfitAndLossDetail', fragment: 'ProfitAndLossDetail', report: true },
-            { handle: 'SalesByClassSummaryReport', name: 'ClassSales', fragment: 'ClassSales', report: true },
-            { handle: 'SalesByCustomerReport', name: 'CustomerSales', fragment: 'CustomerSales', report: true },
-            { handle: 'SalesByDepartmentReport', name: 'DepartmentSales', fragment: 'DepartmentSales', report: true },
-            { handle: 'SalesByProductReport', name: 'ItemSales', fragment: 'ItemSales', report: true },
-            { handle: 'TaxSummaryReport', name: 'TaxSummary', fragment: 'TaxSummary', report: true },
-            { handle: 'TransactionListReport', name: 'TransactionList', fragment: 'TransactionList', report: true },
-            { handle: 'TrialBalanceReportFR', name: 'TrialBalanceFR', fragment: 'TrialBalanceFR', report: true },
-            { handle: 'TrialBalanceReport', name: 'TrialBalance', fragment: 'TrialBalance', report: true },
-            { handle: 'VendorBalanceReport', name: 'VendorBalance', fragment: 'VendorBalance', report: true },
-            { handle: 'VendorBalanceDetailReport', name: 'VendorBalanceDetail', fragment: 'VendorBalanceDetail', report: true },
-            { handle: 'VendorExpensesReport', name: 'VendorExpenses', fragment: 'VendorExpenses', report: true },
-        ];
+        this.registry = registry;
         this.accounting = {
             intuit_tid: null, //tid from most recent api call
         };
@@ -681,7 +614,7 @@ export class QboConnector extends EventEmitter {
     }
 } //QboConnector
 /** An API error from the connector, typically including a captured `payload` object you can work with to obtain more information about the error and how to handle it. */
-export class ApiError extends Error {
+class ApiError extends Error {
     constructor(msg, payload, intuit_tid) {
         super(msg);
         this.payload = payload; //Stores the Intuit response.
@@ -689,15 +622,13 @@ export class ApiError extends Error {
     }
 }
 /** Specific type of API error indicating the API request limit has been reached. */
-export class ApiThrottlingError extends ApiError {
+class ApiThrottlingError extends ApiError {
     constructor(msg, payload, intuit_tid) {
         super(msg, payload, intuit_tid);
     }
 }
 class ApiAuthError extends Error {
 } //only used internally.
-export class CredentialsError extends Error {
+class CredentialsError extends Error {
 } //For missing/incomplete/invalid OAuth credentials.
-// exports.ApiError = ApiError;
-// exports.ApiThrottlingError = ApiThrottlingError;
-// exports.CredentialsError = CredentialsError;
+export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError };

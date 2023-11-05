@@ -424,6 +424,11 @@ export declare const registry: readonly [{
     readonly fragment: "TransactionList";
     readonly report: true;
 }, {
+    readonly handle: "TransactionListWithSplitsReport";
+    readonly name: "TransactionListWithSplits";
+    readonly fragment: "TransactionListWithSplits";
+    readonly report: true;
+}, {
     readonly handle: "TrialBalanceReportFR";
     readonly name: "TrialBalanceFR";
     readonly fragment: "TrialBalanceFR";

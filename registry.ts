@@ -61,6 +61,7 @@ export const registry = [
   { handle: 'SalesByProductReport',             name: 'ItemSales',                    fragment: 'ItemSales',                  report: true },
   { handle: 'TaxSummaryReport',                 name: 'TaxSummary',                   fragment: 'TaxSummary',                 report: true },
   { handle: 'TransactionListReport',            name: 'TransactionList',              fragment: 'TransactionList',            report: true },
+  { handle: 'TransactionListWithSplitsReport',  name: 'TransactionListWithSplits',    fragment: 'TransactionListWithSplits',  report: true },
   { handle: 'TrialBalanceReportFR',             name: 'TrialBalanceFR',               fragment: 'TrialBalanceFR',             report: true }, //FR locale
   { handle: 'TrialBalanceReport',               name: 'TrialBalance',                 fragment: 'TrialBalance',               report: true },
   { handle: 'VendorBalanceReport',              name: 'VendorBalance',                fragment: 'VendorBalance',              report: true },

@@ -84,7 +84,7 @@ export interface QboConnector extends ConnectorConstuctorOptions {
         token_endpoint: string;
         revocation_endpoint: string;
     } | null;
-    registry: RegistryEntry[];
+    registry: typeof registry;
     accounting: {
         intuit_tid: string | null;
     };
@@ -199,18 +199,20 @@ export declare class QboConnector extends EventEmitter {
     */
     getIntuitAuthorizationUrl(state: any): Promise<string>;
 }
-export interface ApiError extends Error {
+interface ApiError extends Error {
     payload: any;
     intuit_tid: string;
 }
 /** An API error from the connector, typically including a captured `payload` object you can work with to obtain more information about the error and how to handle it. */
-export declare class ApiError extends Error {
+declare class ApiError extends Error {
     constructor(msg: any, payload: any, intuit_tid: any);
 }
 /** Specific type of API error indicating the API request limit has been reached. */
-export declare class ApiThrottlingError extends ApiError {
+declare class ApiThrottlingError extends ApiError {
     constructor(msg: any, payload: any, intuit_tid: any);
 }
-export declare class CredentialsError extends Error {
+declare class ApiAuthError extends Error {
 }
-export {};
+declare class CredentialsError extends Error {
+}
+export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError };
