@@ -1,5 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from 'node:events';
+import { type registry as registryUsedAsType } from './registry';
+type registryType = typeof registryUsedAsType;
 export declare const PRODUCTION_API_BASE_URL = "https://quickbooks.api.intuit.com";
 export declare const SANDBOX_API_BASE_URL = "https://sandbox-quickbooks.api.intuit.com";
 import { type RequestInit } from 'node-fetch';
@@ -17,7 +19,6 @@ type ConnectorConstuctorOptions = {
     minor_version?: number;
     credential_initializer?: () => Promise<Credentials> | Credentials;
 } & Partial<Credentials>;
-import { registry } from './registry';
 interface FetchOptions extends RequestInit {
     headers: {
         Accept: string;
@@ -85,14 +86,14 @@ type ApiEntities = {
 type QboAccounting = ApiEntities & {
     batch: Batch;
 };
-type RegistryEntry = (typeof registry)[number];
-export interface QboConnector extends ConnectorConstuctorOptions {
+type RegistryEntry = registryType[number];
+interface QboConnector extends ConnectorConstuctorOptions {
     endpoints: {
         authorization_endpoint: string;
         token_endpoint: string;
         revocation_endpoint: string;
     } | null;
-    registry: typeof registry;
+    registry: registryType;
     accounting: {
         intuit_tid: string | null;
     };
@@ -103,7 +104,7 @@ export interface QboConnector extends ConnectorConstuctorOptions {
  *
  * @version 4.2.x
  */
-export declare class QboConnector extends EventEmitter {
+declare class QboConnector extends EventEmitter {
     /**
      * @param {object} config
      * @param {string} config.client_id (required) the Intuit-generated client id for your app
@@ -223,4 +224,4 @@ declare class ApiAuthError extends Error {
 }
 declare class CredentialsError extends Error {
 }
-export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError };
+export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError, QboConnector, };

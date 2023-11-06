@@ -27,6 +27,10 @@ const DISCOVERY_URL_PRODUCTION =
   'https://developer.api.intuit.com/.well-known/openid_configuration';
 const DISCOVERY_URL_SANDBOX =
   'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
+import { registry } from './registry';
+import { type registry as registryUsedAsType } from './registry';
+
+type registryType = typeof registryUsedAsType;
 
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 
@@ -50,8 +54,6 @@ type ConnectorConstuctorOptions = {
   minor_version?: number;
   credential_initializer?: () => Promise<Credentials> | Credentials;
 } & Partial<Credentials>;
-
-import { registry } from './registry';
 
 interface FetchOptions extends RequestInit {
   headers: {
@@ -121,7 +123,7 @@ type QboAccounting = ApiEntities & {
   batch: Batch;
 };
 
-type RegistryEntry = (typeof registry)[number];
+type RegistryEntry = registryType[number];
 
 interface BaseEntry {
   readonly handle: string;
@@ -140,13 +142,13 @@ interface CRUDOperations {
 
 type Entry = BaseEntry & CRUDOperations;
 
-export interface QboConnector extends ConnectorConstuctorOptions {
+interface QboConnector extends ConnectorConstuctorOptions {
   endpoints: {
     authorization_endpoint: string;
     token_endpoint: string;
     revocation_endpoint: string;
   } | null;
-  registry: typeof registry;
+  registry: registryType;
   accounting: {
     intuit_tid: string | null;
   };
@@ -158,7 +160,7 @@ export interface QboConnector extends ConnectorConstuctorOptions {
  *
  * @version 4.2.x
  */
-export class QboConnector extends EventEmitter {
+class QboConnector extends EventEmitter {
   /**
    * @param {object} config
    * @param {string} config.client_id (required) the Intuit-generated client id for your app
@@ -897,4 +899,10 @@ class ApiThrottlingError extends ApiError {
 class ApiAuthError extends Error {} //only used internally.
 class CredentialsError extends Error {} //For missing/incomplete/invalid OAuth credentials.
 
-export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError };
+export {
+  ApiError,
+  ApiThrottlingError,
+  ApiAuthError,
+  CredentialsError,
+  QboConnector,
+};

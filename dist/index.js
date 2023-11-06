@@ -21,16 +21,16 @@ const verbose = dubug('gr8:quickbooks:verbose');
 import { EventEmitter } from 'node:events';
 const DISCOVERY_URL_PRODUCTION = 'https://developer.api.intuit.com/.well-known/openid_configuration';
 const DISCOVERY_URL_SANDBOX = 'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
+import { registry } from './registry';
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 export const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
 export const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
-import { registry } from './registry';
 /**
  * NodeJS QuickBooks connector class for the Intuit v3 Accounting API.
  *
  * @version 4.2.x
  */
-export class QboConnector extends EventEmitter {
+class QboConnector extends EventEmitter {
     /**
      * @param {object} config
      * @param {string} config.client_id (required) the Intuit-generated client id for your app
@@ -631,4 +631,4 @@ class ApiAuthError extends Error {
 } //only used internally.
 class CredentialsError extends Error {
 } //For missing/incomplete/invalid OAuth credentials.
-export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError };
+export { ApiError, ApiThrottlingError, ApiAuthError, CredentialsError, QboConnector, };
