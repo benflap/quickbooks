@@ -28,9 +28,8 @@ const DISCOVERY_URL_PRODUCTION =
 const DISCOVERY_URL_SANDBOX =
   'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
 import { registry } from './registry';
-import { type registry as registryUsedAsType } from './registry';
 
-type registryType = typeof registryUsedAsType;
+type registryType = typeof registry;
 
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 

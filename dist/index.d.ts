@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from 'node:events';
-import { type registry as registryUsedAsType } from './registry';
-type registryType = typeof registryUsedAsType;
+import { registry } from './registry';
+type registryType = typeof registry;
 export declare const PRODUCTION_API_BASE_URL = "https://quickbooks.api.intuit.com";
 export declare const SANDBOX_API_BASE_URL = "https://sandbox-quickbooks.api.intuit.com";
 import { type RequestInit } from 'node-fetch';
