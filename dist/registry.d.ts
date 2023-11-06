@@ -1,4 +1,4 @@
-export declare const registry: readonly [{
+declare const registry: readonly [{
     readonly handle: "Bill";
     readonly name: "Bill";
     readonly fragment: "bill";
@@ -454,3 +454,4 @@ export declare const registry: readonly [{
     readonly fragment: "VendorExpenses";
     readonly report: true;
 }];
+export default registry;

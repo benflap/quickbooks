@@ -1,7 +1,6 @@
 /// <reference types="node" />
+import registry from './registry';
 import { EventEmitter } from 'node:events';
-import { registry } from './registry';
-type registryType = typeof registry;
 export declare const PRODUCTION_API_BASE_URL = "https://quickbooks.api.intuit.com";
 export declare const SANDBOX_API_BASE_URL = "https://sandbox-quickbooks.api.intuit.com";
 import { type RequestInit } from 'node-fetch';
@@ -86,14 +85,13 @@ type ApiEntities = {
 type QboAccounting = ApiEntities & {
     batch: Batch;
 };
-type RegistryEntry = registryType[number];
+type RegistryEntry = (typeof registry)[number];
 interface QboConnector extends ConnectorConstuctorOptions {
     endpoints: {
         authorization_endpoint: string;
         token_endpoint: string;
         revocation_endpoint: string;
     } | null;
-    registry: registryType;
     accounting: {
         intuit_tid: string | null;
     };

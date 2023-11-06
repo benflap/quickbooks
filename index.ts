@@ -15,6 +15,7 @@
 */
 import fetch from 'node-fetch';
 import * as queryString from 'query-string';
+import registry from './registry';
 
 import dubug from 'debug';
 
@@ -27,9 +28,6 @@ const DISCOVERY_URL_PRODUCTION =
   'https://developer.api.intuit.com/.well-known/openid_configuration';
 const DISCOVERY_URL_SANDBOX =
   'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
-import { registry } from './registry';
-
-type registryType = typeof registry;
 
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 
@@ -122,7 +120,7 @@ type QboAccounting = ApiEntities & {
   batch: Batch;
 };
 
-type RegistryEntry = registryType[number];
+type RegistryEntry = (typeof registry)[number];
 
 interface BaseEntry {
   readonly handle: string;
@@ -147,7 +145,6 @@ interface QboConnector extends ConnectorConstuctorOptions {
     token_endpoint: string;
     revocation_endpoint: string;
   } | null;
-  registry: registryType;
   accounting: {
     intuit_tid: string | null;
   };
@@ -209,8 +206,6 @@ class QboConnector extends EventEmitter {
       token_endpoint: null,
       revocation_endpoint: null,
     };*/
-
-    this.registry = registry;
 
     this.accounting = {
       intuit_tid: null, //tid from most recent api call
@@ -290,7 +285,7 @@ class QboConnector extends EventEmitter {
     const self = this;
     const api: Partial<ApiEntities> = {};
 
-    this.registry.forEach(function (entry: Entry) {
+    registry.forEach(function (entry: Entry) {
       api[entry.handle] = {
         name: entry.name,
         fragment: entry.fragment,

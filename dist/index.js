@@ -15,13 +15,13 @@
 */
 import fetch from 'node-fetch';
 import * as queryString from 'query-string';
+import registry from './registry';
 import dubug from 'debug';
 const debug = dubug('gr8:quickbooks');
 const verbose = dubug('gr8:quickbooks:verbose');
 import { EventEmitter } from 'node:events';
 const DISCOVERY_URL_PRODUCTION = 'https://developer.api.intuit.com/.well-known/openid_configuration';
 const DISCOVERY_URL_SANDBOX = 'https://developer.api.intuit.com/.well-known/openid_sandbox_configuration';
-import { registry } from './registry';
 const USER_AGENT = 'Apigrate QuickBooks NodeJS Connector/4.x';
 export const PRODUCTION_API_BASE_URL = 'https://quickbooks.api.intuit.com';
 export const SANDBOX_API_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com';
@@ -74,7 +74,6 @@ class QboConnector extends EventEmitter {
           token_endpoint: null,
           revocation_endpoint: null,
         };*/
-        this.registry = registry;
         this.accounting = {
             intuit_tid: null, //tid from most recent api call
         };
@@ -141,7 +140,7 @@ class QboConnector extends EventEmitter {
     accountingApi() {
         const self = this;
         const api = {};
-        this.registry.forEach(function (entry) {
+        registry.forEach(function (entry) {
             api[entry.handle] = {
                 name: entry.name,
                 fragment: entry.fragment,

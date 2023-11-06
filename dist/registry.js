@@ -1,5 +1,5 @@
 // prettier-ignore
-export const registry = [
+const registry = [
     //transaction entities
     { handle: 'Bill', name: 'Bill', fragment: 'bill', query: true, create: true, read: true, update: true, delete: true },
     { handle: 'BillPayment', name: 'BillPayment', fragment: 'billpayment', query: true, create: true, read: true, update: true, delete: true },
@@ -68,3 +68,4 @@ export const registry = [
     { handle: 'VendorBalanceDetailReport', name: 'VendorBalanceDetail', fragment: 'VendorBalanceDetail', report: true },
     { handle: 'VendorExpensesReport', name: 'VendorExpenses', fragment: 'VendorExpenses', report: true },
 ];
+export default registry;
