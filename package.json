@@ -1,6 +1,6 @@
 {
   "name": "@apigrate/quickbooks",
-  "version": "4.2.0-ts-2",
+  "version": "4.2.0-ts-3",
   "description": "NodeJS API Connector for the Intuit QuickBooks API.",
   "type": "module",
   "main": "dist/index.js",
