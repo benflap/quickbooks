@@ -493,7 +493,7 @@ type Update = (payload: any, options?: FunctionOptions) => Promise<any>;
 type Updateable<TEntity> = TEntity extends {
     update: true;
 } ? Update : never;
-type Read = (id: number, options?: FunctionOptions) => Promise<any>;
+type Read = (id: string | number | bigint, options?: FunctionOptions) => Promise<any>;
 type Readable<TEntity> = TEntity extends {
     read: true;
 } ? Read : never;
